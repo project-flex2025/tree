@@ -1,0 +1,142 @@
+[
+  {
+    "keyword": "Diseases",
+    "url": "https://example.com/search/diseases",
+    "description": "A general category for various diseases."
+  },
+  {
+    "keyword": "Breast Cancer",
+    "url": "https://example.com/search/breast_cancer",
+    "description": "A malignant tumor that originates from breast cells."
+  },
+  {
+    "keyword": "Lung Cancer",
+    "url": "https://example.com/search/lung_cancer",
+    "description": "Cancer that forms in the tissues of the lung."
+  },
+  {
+    "keyword": "Prostate Cancer",
+    "url": "https://example.com/search/prostate_cancer",
+    "description": "Cancer that occurs in the prostate gland of males."
+  },
+  {
+    "keyword": "Colorectal Cancer",
+    "url": "https://example.com/search/colorectal_cancer",
+    "description": "Cancer of the colon or rectum, part of the digestive tract."
+  },
+  {
+    "keyword": "Ovarian Cancer",
+    "url": "https://example.com/search/ovarian_cancer",
+    "description": "Cancer that begins in the ovaries, the female reproductive organs."
+  },
+  {
+    "keyword": "Proteins",
+    "url": "https://example.com/search/proteins",
+    "description": "Large biomolecules essential for structure and function in cells."
+  },
+  {
+    "keyword": "p53",
+    "url": "https://example.com/search/p53",
+    "description": "A tumor suppressor protein involved in preventing cancer."
+  },
+  {
+    "keyword": "HER2",
+    "url": "https://example.com/search/her2",
+    "description": "A protein that can promote the growth of cancer cells."
+  },
+  {
+    "keyword": "EGFR",
+    "url": "https://example.com/search/egfr",
+    "description": "Epidermal growth factor receptor, involved in cell growth."
+  },
+  {
+    "keyword": "VEGF",
+    "url": "https://example.com/search/vegf",
+    "description": "Vascular endothelial growth factor, stimulates blood vessel growth."
+  },
+  {
+    "keyword": "BRCA1",
+    "url": "https://example.com/search/brca1",
+    "description": "A gene associated with increased risk of breast and ovarian cancer."
+  },
+  {
+    "keyword": "Genes",
+    "url": "https://example.com/search/genes",
+    "description": "Segments of DNA that code for proteins and traits."
+  },
+  {
+    "keyword": "TP53",
+    "url": "https://example.com/search/tp53",
+    "description": "A gene that codes for the p53 protein, crucial in cancer prevention."
+  },
+  {
+    "keyword": "BRCA2",
+    "url": "https://example.com/search/brca2",
+    "description": "A gene linked to higher risk of breast and ovarian cancer."
+  },
+  {
+    "keyword": "KRAS",
+    "url": "https://example.com/search/kras",
+    "description": "A gene involved in cell signaling pathways, often mutated in cancer."
+  },
+  {
+    "keyword": "Chemicals",
+    "url": "https://example.com/search/chemicals",
+    "description": "Substances used in or produced by chemical processes."
+  },
+  {
+    "keyword": "Tamoxifen",
+    "url": "https://example.com/search/tamoxifen",
+    "description": "A drug used to treat and prevent breast cancer."
+  },
+  {
+    "keyword": "Trastuzumab",
+    "url": "https://example.com/search/trastuzumab",
+    "description": "A monoclonal antibody used to treat HER2-positive breast cancer."
+  },
+  {
+    "keyword": "Cisplatin",
+    "url": "https://example.com/search/cisplatin",
+    "description": "A chemotherapy drug used to treat various cancers."
+  },
+  {
+    "keyword": "Doxorubicin",
+    "url": "https://example.com/search/doxorubicin",
+    "description": "An anthracycline antibiotic used in cancer chemotherapy."
+  },
+  {
+    "keyword": "Methotrexate",
+    "url": "https://example.com/search/methotrexate",
+    "description": "A chemotherapy agent and immune system suppressant."
+  },
+  {
+    "keyword": "Drugs",
+    "url": "https://example.com/search/drugs",
+    "description": "Substances used to diagnose, treat, or prevent diseases."
+  },
+  {
+    "keyword": "Keytruda",
+    "url": "https://example.com/search/keytruda",
+    "description": "An immunotherapy drug used to treat various cancers."
+  },
+  {
+    "keyword": "Opdivo",
+    "url": "https://example.com/search/opdivo",
+    "description": "An immune checkpoint inhibitor used in cancer treatment."
+  },
+  {
+    "keyword": "Avastin",
+    "url": "https://example.com/search/avastin",
+    "description": "A drug that inhibits angiogenesis, used to treat several cancers."
+  },
+  {
+    "keyword": "Herceptin",
+    "url": "https://example.com/search/herceptin",
+    "description": "A monoclonal antibody for HER2-positive breast cancer."
+  },
+  {
+    "keyword": "Revlimid",
+    "url": "https://example.com/search/revlimid",
+    "description": "A medication used to treat multiple myeloma and other conditions."
+  }
+]

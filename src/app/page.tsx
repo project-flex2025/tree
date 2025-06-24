@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -6,22 +8,41 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faEye,
   faEyeSlash,
+  faDownload,
   faSearchPlus,
   faSearchMinus,
-  faDownload,
 } from "@fortawesome/free-solid-svg-icons";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 
+type KeywordItem = {
+  keyword: string;
+  url: string;
+  description: string;
+};
+
 const categories = ["diseases", "proteins", "genes", "chemicals", "drugs"];
 
-export default function ForceGraph() {
+const ForceGraph = () => {
   const svgRef = useRef<SVGSVGElement>(null);
   const graphData = useRef<any>(null);
   const zoomRef = useRef<any>(null);
   const gRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleCategories, setVisibleCategories] = useState<string[]>([]);
+
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<KeywordItem[]>([]);
+  const [selectedKeyword, setSelectedKeyword] = useState("");
+  const [results, setResults] = useState<KeywordItem[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [loadingResults, setLoadingResults] = useState(false);
+  const [suggestionSelected, setSuggestionSelected] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">(
+    "down"
+  );
+  const toggleRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -40,6 +61,80 @@ export default function ForceGraph() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!query.trim() || suggestionSelected) {
+      setSuggestions([]);
+      return;
+    }
+
+    const fetchSuggestions = async () => {
+      setLoadingSuggestions(true);
+      try {
+        const res = await fetch(
+          `/api/search?keyword=${encodeURIComponent(query)}`
+        );
+        const data: KeywordItem[] = await res.json();
+        setSuggestions(data);
+      } catch (err) {
+        console.error("Suggestion fetch error", err);
+        setSuggestions([]);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    };
+
+    const timer = setTimeout(fetchSuggestions, 300);
+    return () => clearTimeout(timer);
+  }, [query, suggestionSelected]);
+
+  // Fetch final results when user selects a suggestion
+  useEffect(() => {
+    if (!selectedKeyword) return;
+
+    const fetchResults = async () => {
+      setLoadingResults(true);
+      try {
+        const res = await fetch(
+          `/api/search?keyword=${encodeURIComponent(selectedKeyword)}`
+        );
+        const data: KeywordItem[] = await res.json();
+        setResults(data);
+      } catch (err) {
+        console.error("Result fetch error", err);
+        setResults([]);
+      } finally {
+        setLoadingResults(false);
+      }
+    };
+
+    fetchResults();
+  }, [selectedKeyword]);
+
+  const handleSelectSuggestion = (text: string) => {
+    setQuery(text);
+    setSelectedKeyword(text);
+    setSuggestionSelected(true); // prevents further suggestions
+    setSuggestions([]); // hide current suggestions
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+    setSelectedKeyword("");
+    setResults([]);
+    setSuggestionSelected(false); // reset suggestion behavior
+  };
+
+  const handleDropdownToggle = () => {
+    if (toggleRef.current) {
+      const rect = toggleRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const dropdownHeight = 200; // Adjust this as per your design
+
+      setDropdownDirection(spaceBelow < dropdownHeight ? "up" : "down");
+    }
+
+    setShowDropdown((prev) => !prev);
+  };
   const initializeGraph = () => {
     if (!svgRef.current || !graphData.current || !containerRef.current) return;
 
@@ -91,16 +186,17 @@ export default function ForceGraph() {
       .style("stroke", (d: any) => `rgba(0, 0, 0, ${d.value / 100})`)
       .style("stroke-width", (d: any) => d.thickness)
       .on("mouseover", function (event: any, d: any) {
-        const checkedNodes = new Set();
-        d3.selectAll(".kcb").each(function () {
-          const cb = d3.select(this);
-          if (cb.property("checked")) {
-            checkedNodes.add(cb.attr("data-id"));
+        const checkedNodes = new Set<string>();
+        d3.selectAll<HTMLInputElement, unknown>(".kcb").each(function () {
+          const element = this as HTMLInputElement;
+          if (element.checked) {
+            const id = element.getAttribute("data-id");
+            if (id) checkedNodes.add(id);
           }
         });
 
         if (checkedNodes.size > 0) {
-          d3.select(this).style("opacity", 1);
+          d3.select(event.currentTarget).style("opacity", 1);
           gRef.current
             .selectAll(".node")
             .style("opacity", (node: any) =>
@@ -152,8 +248,8 @@ export default function ForceGraph() {
           .on("drag", dragged)
           .on("end", dragended)
       )
-      .on("mouseover", function (event: any, d: any) {
-        d3.select(this).style("opacity", 1);
+      .on("mouseover", function (this: SVGGElement, event: MouseEvent, d: any) {
+        d3.select<SVGGElement, unknown>(this).style("opacity", "1");
       })
       .on("mouseout", function () {
         updateGraph();
@@ -282,10 +378,9 @@ export default function ForceGraph() {
     }
 
     (window as any).toggleCategory = function (category: string) {
-      const button = document.getElementById(`button-${category}`);
-      if (!button) return;
-
-      const isActive = button.classList.contains("applied");
+      const isActive = graphData.current.nodes.some(
+        (node: any) => node.category === category && node.visible
+      );
 
       graphData.current.nodes.forEach((node: any) => {
         if (node.category === category) {
@@ -293,55 +388,16 @@ export default function ForceGraph() {
         }
       });
 
-      button.classList.toggle("applied");
-      const icon = button.querySelector("i");
-      if (icon) {
-        icon.className = isActive ? "fa fa-eye" : "fa fa-eye-slash";
-      }
-
       updateGraph();
     };
 
     (window as any).toggleAllCategories = function () {
-      const button = document.getElementById("button-all-categories");
-      if (!button) return;
-
-      const isActive = button.classList.contains("applied");
+      const isActive = graphData.current.nodes.every(
+        (node: any) => node.visible
+      );
 
       graphData.current.nodes.forEach((node: any) => {
         node.visible = !isActive;
-      });
-
-      button.classList.toggle("applied");
-      const icon = button.querySelector("i");
-      if (icon) {
-        icon.className = isActive ? "fa fa-eye" : "fa fa-eye-slash";
-      }
-
-      const categories = [
-        "diseases",
-        "proteins",
-        "genes",
-        "chemicals",
-        "drugs",
-      ];
-      categories.forEach((category) => {
-        const categoryButton = document.getElementById(`button-${category}`);
-        if (categoryButton) {
-          if (isActive) {
-            categoryButton.classList.remove("applied");
-            const catIcon = categoryButton.querySelector("i");
-            if (catIcon) {
-              catIcon.className = "fa fa-eye";
-            }
-          } else {
-            categoryButton.classList.add("applied");
-            const catIcon = categoryButton.querySelector("i");
-            if (catIcon) {
-              catIcon.className = "fa fa-eye-slash";
-            }
-          }
-        }
       });
 
       updateGraph();
@@ -490,12 +546,10 @@ export default function ForceGraph() {
 
   return (
     <div className="container-fluid p-0">
-      <div className="bg-primary text-white p-3 d-flex align-items-center">
+      {/* <div className="bg-primary text-white p-3 d-flex align-items-center">
         <p className="mb-0">Header</p>
-      </div>
-      <div className="bg-primary text-white p-3 d-flex align-items-center">
-        <p className="mb-0">Header</p>
-      </div>
+      </div> */}
+
       <div className="container-fluid d-flex flex-column">
         <div className="row">
           {/* Graph Column - col-md-7 */}
@@ -505,356 +559,168 @@ export default function ForceGraph() {
                 <h1>Cancer</h1>
                 <p>Some Text Here | Some Text Here | Some Text Here</p>
               </div>
-
-              <div className="button-container">
-                {categories.map((category) => (
+              {/* 
+              <div className="category-select-container">
+                <div className="custom-select">
                   <button
-                    key={category}
-                    className="category-button"
-                    id={`button-${category}`}
-                    onClick={() => handleCategoryToggle(category)}
+                    className="select-toggle"
+                    onClick={() => setShowDropdown(!showDropdown)}
                   >
-                    <FontAwesomeIcon
-                      icon={
-                        visibleCategories.includes(category)
-                          ? faEye
-                          : faEyeSlash
-                      }
-                    />{" "}
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                    Select Categories ▼
                   </button>
-                ))}
+
+                  {showDropdown && (
+                    <div className="select-dropdown">
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={
+                            visibleCategories.length === categories.length
+                          }
+                          onChange={() => {
+                            handleToggleAllCategories();
+                          }}
+                        />{" "}
+                        All Categories
+                      </label>
+
+                      {categories.map((category) => (
+                        <label key={category} className="checkbox-label">
+                          <input
+                            type="checkbox"
+                            checked={visibleCategories.includes(category)}
+                            onChange={() => {
+                              handleCategoryToggle(category);
+                            }}
+                          />{" "}
+                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div> */}
+
+              <div className="category-select-container">
+                <div className="custom-select">
+                  <button
+                    ref={toggleRef}
+                    className="select-toggle"
+                    onClick={handleDropdownToggle}
+                  >
+                    Select Categories ▼
+                  </button>
+
+                  {showDropdown && (
+                    <div className={`select-dropdown ${dropdownDirection}`}>
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={
+                            visibleCategories.length === categories.length
+                          }
+                          onChange={handleToggleAllCategories}
+                        />{" "}
+                        All Categories
+                      </label>
+
+                      {categories.map((category) => (
+                        <label key={category} className="checkbox-label">
+                          <input
+                            type="checkbox"
+                            checked={visibleCategories.includes(category)}
+                            onChange={() => handleCategoryToggle(category)}
+                          />{" "}
+                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="control-row">
+                <button className="circle-button" onClick={handleZoomIn}>
+                  <FontAwesomeIcon icon={faSearchPlus} />
+                </button>
+                <button className="circle-button" onClick={handleZoomOut}>
+                  <FontAwesomeIcon icon={faSearchMinus} />
+                </button>
                 <button
-                  className="category-button"
-                  id="button-all-categories"
-                  onClick={handleToggleAllCategories}
+                  className="circle-button green"
+                  onClick={handleDownload}
                 >
-                  <FontAwesomeIcon
-                    icon={
-                      visibleCategories.length === categories.length
-                        ? faEye
-                        : faEyeSlash
-                    }
-                  />{" "}
-                  All Categories
+                  <FontAwesomeIcon icon={faDownload} />
                 </button>
               </div>
 
-              <div className="controls-container">
-                <button className="control-button" onClick={handleZoomIn}>
-                  <FontAwesomeIcon icon={faSearchPlus} /> Zoom In
-                </button>
-                <button className="control-button" onClick={handleZoomOut}>
-                  <FontAwesomeIcon icon={faSearchMinus} /> Zoom Out
-                </button>
-              </div>
-
-              <div className="download-container">
-                <button className="download-button" onClick={handleDownload}>
-                  <FontAwesomeIcon icon={faDownload} /> Download PNG
-                </button>
-              </div>
-
-              <svg ref={svgRef} className=""></svg>
+              <svg ref={svgRef} className="d3-svg-section"></svg>
             </div>
           </div>
 
           {/* Content Column - col-md-5 */}
           <div className="col-md-5 p-3 bg-light overflow-auto">
             <div className="content-section">
-              <h2>Cancer Disease Information</h2>
-              <p>
-                Cancer is a group of diseases involving abnormal cell growth
-                with the potential to invade or spread to other parts of the
-                body. These contrast with benign tumors, which do not spread.
-              </p>
+              <div className="container position-relative">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Type to search (e.g. can)"
+                  value={query}
+                  onChange={handleInputChange}
+                />
 
-              <h3 className="mt-4">Key Statistics</h3>
-              <ul>
-                <li>Estimated new cases in 2023: 1,958,310</li>
-                <li>Estimated deaths in 2023: 609,820</li>
-                <li>5-year survival rate: 68% for all cancers combined</li>
-              </ul>
+                {/* Suggestions Dropdown */}
+                {loadingSuggestions && (
+                  <p className="mt-2">Loading suggestions...</p>
+                )}
+                {!loadingSuggestions && suggestions.length > 0 && (
+                  <ul className="list-group position-absolute w-100 z-3">
+                    {suggestions.map((item) => (
+                      <li
+                        key={item.keyword}
+                        className="list-group-item list-group-item-action"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => handleSelectSuggestion(item.keyword)}
+                      >
+                        {item.keyword}
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
-              <h3 className="mt-4">Common Types</h3>
-              <div className="row">
-                <div className="col-md-6">
-                  <div className="card mb-3">
-                    <div className="card-body">
-                      <h5 className="card-title">Breast Cancer</h5>
-                      <p className="card-text">
-                        Most common cancer in women worldwide, with about 2.3
-                        million new cases in 2020.
-                      </p>
-                    </div>
+                {/* Results */}
+                {loadingResults && <p className="mt-4">Loading results...</p>}
+                {!loadingResults && results.length > 0 && (
+                  <div className="mt-4">
+                    <h5>
+                      Results for <mark>{selectedKeyword}</mark>:
+                    </h5>
+                    <ul className="list-group">
+                      {results.map((item) => (
+                        <li key={item.keyword} className="list-group-item">
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <strong>{item.keyword}</strong>
+                          </a>
+                          <p className="mb-0 small text-muted">
+                            {item.description}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </div>
-                <div className="col-md-6">
-                  <div className="card mb-3">
-                    <div className="card-body">
-                      <h5 className="card-title">Lung Cancer</h5>
-                      <p className="card-text">
-                        Leading cause of cancer death, accounting for about 1.8
-                        million deaths in 2020.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
-
-              <h3 className="mt-4">Treatment Options</h3>
-              <table className="table table-striped">
-                <thead>
-                  <tr>
-                    <th>Treatment</th>
-                    <th>Description</th>
-                    <th>Used For</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Surgery</td>
-                    <td>Physical removal of tumor</td>
-                    <td>Solid tumors</td>
-                  </tr>
-                  <tr>
-                    <td>Chemotherapy</td>
-                    <td>Drugs that kill rapidly dividing cells</td>
-                    <td>Systemic disease</td>
-                  </tr>
-                  <tr>
-                    <td>Radiation</td>
-                    <td>High-energy particles to destroy cancer cells</td>
-                    <td>Localized tumors</td>
-                  </tr>
-                </tbody>
-              </table>
             </div>
           </div>
         </div>
-
-        <style jsx global>{`
-          body {
-            font-family: sans-serif;
-            margin: 0;
-            overflow: hidden;
-          }
-
-          .node {
-            cursor: pointer;
-          }
-
-          .node circle {
-            fill: #fff;
-            stroke: #efefef;
-            stroke-width: 1.5px;
-          }
-
-          .node text {
-            font: 10px sans-serif;
-          }
-
-          .link {
-            fill: none;
-          }
-
-          .checkbox-container {
-            display: flex;
-            align-items: center;
-            padding: 5px 10px;
-            background-color: #f8f9fa;
-            border: 1px solid #ddd;
-            border-radius: 15px;
-            box-shadow: 0 2px 2px rgba(0, 0, 0, 0.1);
-          }
-
-          .checkbox-container input {
-            margin-right: 5px;
-          }
-
-          .icon-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-          }
-
-          .large-text {
-            font-size: 18px;
-          }
-
-          .medium-text {
-            font-size: 16px;
-          }
-
-          .small-text {
-            font-size: 13px;
-          }
-
-          .kcb {
-            width: 18px;
-            height: 18px;
-          }
-
-          .highlighted {
-            stroke: #4481d7 !important;
-            stroke-width: 3px !important;
-          }
-
-          .button-container {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            z-index: 10;
-          }
-
-          .category-button {
-            padding: 5px 10px;
-            margin: 5px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-          }
-
-          .category-button:hover {
-            background-color: #0056b3;
-          }
-
-          .category-button.applied {
-            background-color: #28a745;
-          }
-
-          .category-button.applied:hover {
-            background-color: #218838;
-          }
-
-          .main_foreignObject2 .kcb {
-            display: none;
-          }
-
-          .main_foreignObject2 .checkbox-container {
-            display: block;
-            text-align: center;
-          }
-
-          foreignObject div.diseases_main {
-            background-color: rgb(214, 39, 40);
-            color: #fff;
-          }
-
-          foreignObject div.proteins_main {
-            background-color: rgb(255, 127, 14);
-            color: #fff;
-          }
-
-          foreignObject div.genes_main {
-            background-color: rgb(44, 160, 44);
-            color: #fff;
-          }
-
-          foreignObject div.chemicals_main {
-            background-color: rgb(148, 103, 189);
-            color: #fff;
-          }
-
-          foreignObject div.drugs_main {
-            background-color: rgb(140, 86, 75);
-            color: #fff;
-          }
-
-          .highlighted {
-            stroke: red;
-            stroke-width: 3px;
-          }
-
-          .controls-container {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-          }
-
-          .control-button {
-            padding: 5px 10px;
-            margin: 5px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-          }
-
-          .control-button:hover {
-            background-color: #0056b3;
-          }
-
-          .background-text {
-            pointer-events: none;
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            text-align: center;
-            top: 88%;
-            transform: translateY(-50%);
-            z-index: -1;
-          }
-
-          .background-text h1 {
-            font-family: Arial;
-            font-size: 150px;
-            color: black;
-            opacity: 0.1;
-            margin: 0;
-          }
-
-          .background-text p {
-            font-family: Arial;
-            font-size: 25px;
-            color: black;
-            opacity: 0.2;
-            margin: 0;
-          }
-
-          .download-container {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-          }
-
-          .download-button {
-            padding: 5px 10px;
-            margin: 5px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-          }
-
-          .download-button:hover {
-            background-color: #218838;
-          }
-
-          .content-section {
-            background-color: #fff;
-            border-radius: 8px;
-            padding: 20px;
-          }
-        `}</style>
       </div>
     </div>
   );
-}
+};
+
+export default ForceGraph;
