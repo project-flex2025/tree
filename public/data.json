@@ -7,7 +7,7 @@
       "keyword": "Diseases",
       "icon": "fa-solid fa-virus",
       "iconColor": "#ffffff",
-      "nodeIconSize": 30,
+      "nodeIconSize": 25,
       "textClass": "medium-text",
       "category": "diseases",
       "nodeType": "main"
@@ -79,7 +79,7 @@
       "keyword": "Proteins",
       "icon": "fa-solid fa-vial",
       "iconColor": "#ffffff",
-      "nodeIconSize": 30,
+      "nodeIconSize": 25,
       "textClass": "medium-text",
       "category": "proteins",
       "nodeType": "main"
@@ -151,7 +151,7 @@
       "keyword": "Genes",
       "icon": "fa-solid fa-dna",
       "iconColor": "#ffffff",
-      "nodeIconSize": 30,
+      "nodeIconSize": 25,
       "textClass": "medium-text",
       "category": "genes",
       "nodeType": "main"
@@ -163,7 +163,7 @@
       "keyword": "TP53",
       "icon": "fa-solid fa-dna",
       "iconColor": "#ffffff",
-      "nodeIconSize": 30,
+      "nodeIconSize": 25,
       "textClass": "medium-text",
       "category": "genes",
       "nodeType": "sub"
@@ -175,7 +175,7 @@
       "keyword": "BRCA1",
       "icon": "fa-solid fa-dna",
       "iconColor": "#ffffff",
-      "nodeIconSize": 30,
+      "nodeIconSize": 25,
       "textClass": "medium-text",
       "category": "genes",
       "nodeType": "sub"
@@ -187,7 +187,7 @@
       "keyword": "BRCA2",
       "icon": "fa-solid fa-dna",
       "iconColor": "#ffffff",
-      "nodeIconSize": 30,
+      "nodeIconSize": 25,
       "textClass": "medium-text",
       "category": "genes",
       "nodeType": "sub"
@@ -199,7 +199,7 @@
       "keyword": "KRAS",
       "icon": "fa-solid fa-dna",
       "iconColor": "#ffffff",
-      "nodeIconSize": 30,
+      "nodeIconSize": 25,
       "textClass": "medium-text",
       "category": "genes",
       "nodeType": "sub"
@@ -211,7 +211,7 @@
       "keyword": "EGFR",
       "icon": "fa-solid fa-dna",
       "iconColor": "#ffffff",
-      "nodeIconSize": 30,
+      "nodeIconSize": 25,
       "textClass": "medium-text",
       "category": "genes",
       "nodeType": "sub"
@@ -223,7 +223,7 @@
       "keyword": "Chemicals",
       "icon": "fa-solid fa-flask",
       "iconColor": "#ffffff",
-      "nodeIconSize": 30,
+      "nodeIconSize": 25,
       "textClass": "medium-text",
       "category": "chemicals",
       "nodeType": "main"
@@ -295,7 +295,7 @@
       "keyword": "Drugs",
       "icon": "fa-solid fa-capsules",
       "iconColor": "#ffffff",
-      "nodeIconSize": 30,
+      "nodeIconSize": 25,
       "textClass": "medium-text",
       "category": "drugs",
       "nodeType": "main"

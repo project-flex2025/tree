@@ -80,7 +80,7 @@ a {
 .category-button {
   padding: 5px 10px;
   margin: 5px;
-  background-color: #007bff;
+  background-color: #28a745;
   color: white;
   border: none;
   border-radius: 5px;
@@ -90,15 +90,15 @@ a {
 }
 
 .category-button:hover {
-  background-color: #0056b3;
+  background-color: #218838;
 }
 
 .category-button.applied {
-  background-color: #28a745;
+  background-color: #007bff;
 }
 
 .category-button.applied:hover {
-  background-color: #218838;
+  background-color: #0056b3;
 }
 
 .main_foreignObject2 .kcb {
@@ -248,10 +248,20 @@ foreignObject div.drugs_main {
   background-color: #218838;
 }
 
-.content-section {
-  background-color: #fff;
+.search-content-section {
   border-radius: 8px;
   padding: 20px;
+}
+.content-section {
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+
+.content-section .data-content{
+  padding: 10px;
+  border-radius: 20px;
 }
 
 .d3-svg-section {
@@ -312,20 +322,6 @@ foreignObject div.drugs_main {
   cursor: pointer;
 }
 
-/* .select-dropdown {
-  position: absolute;
-  top: 110%;
-  left: 0;
-  background: white;
-  border: 1px solid #ccc;
-  padding: 8px 12px;
-  border-radius: 5px;
-  z-index: 100;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  max-height: 300px;
-  overflow-y: auto;
-  min-width: 200px;
-} */
 .select-dropdown {
   position: absolute;
   background: white;
@@ -336,13 +332,20 @@ foreignObject div.drugs_main {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Default: dropdown opens below */
+.select-dropdown .dropdown-button {
+  background-color: #0056b3;
+  border: none;
+  margin: 3px;
+  border-radius: 6px;
+  padding: 5px 12px;
+  color: #fff;
+}
+
 .select-dropdown.down {
   top: 100%;
   margin-top: 5px;
 }
 
-/* If no space below, open above */
 .select-dropdown.up {
   bottom: 100%;
   margin-bottom: 5px;
@@ -409,4 +412,36 @@ foreignObject div.drugs_main {
 
 .circle-button.green:hover {
   background-color: #218838;
+}
+
+/* ============ search============ */
+/* Search Wrapper */
+.search-wrapper {
+  position: relative;
+}
+
+/* Search Icon Inside Input */
+.search-icon {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: #999;
+  pointer-events: none;
+  font-size: 1rem;
+}
+
+/* Custom Input Styling */
+.custom-search-input {
+  padding-left: 2rem !important;
+  border-radius: 8px !important;
+  border: 1px solid #ced4da;
+  box-shadow: none;
+}
+
+/* Optional: Focused style */
+.custom-search-input:focus {
+  border-color: #86b7fe;
+  outline: 0;
+  box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.15);
 }

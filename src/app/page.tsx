@@ -155,7 +155,7 @@ const ForceGraph = () => {
     // Set up zoom behavior
     zoomRef.current = d3
       .zoom()
-      .scaleExtent([0.5, 8])
+      .scaleExtent([0.5, 4])
       .on("zoom", (event) => {
         gRef.current.attr("transform", event.transform);
       });
@@ -169,7 +169,7 @@ const ForceGraph = () => {
         d3
           .forceLink(graphData.current.links)
           .id((d: any) => d.id)
-          .distance((d: any) => d.distance + 150)
+          .distance((d: any) => d.distance + 100)
       )
       .force("charge", d3.forceManyBody().strength(-300))
       .force("center", d3.forceCenter(width / 2, height / 2));
@@ -546,10 +546,6 @@ const ForceGraph = () => {
 
   return (
     <div className="container-fluid p-0">
-      {/* <div className="bg-primary text-white p-3 d-flex align-items-center">
-        <p className="mb-0">Header</p>
-      </div> */}
-
       <div className="container-fluid d-flex flex-column">
         <div className="row">
           {/* Graph Column - col-md-7 */}
@@ -559,49 +555,8 @@ const ForceGraph = () => {
                 <h1>Cancer</h1>
                 <p>Some Text Here | Some Text Here | Some Text Here</p>
               </div>
-              {/* 
-              <div className="category-select-container">
-                <div className="custom-select">
-                  <button
-                    className="select-toggle"
-                    onClick={() => setShowDropdown(!showDropdown)}
-                  >
-                    Select Categories ▼
-                  </button>
 
-                  {showDropdown && (
-                    <div className="select-dropdown">
-                      <label className="checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={
-                            visibleCategories.length === categories.length
-                          }
-                          onChange={() => {
-                            handleToggleAllCategories();
-                          }}
-                        />{" "}
-                        All Categories
-                      </label>
-
-                      {categories.map((category) => (
-                        <label key={category} className="checkbox-label">
-                          <input
-                            type="checkbox"
-                            checked={visibleCategories.includes(category)}
-                            onChange={() => {
-                              handleCategoryToggle(category);
-                            }}
-                          />{" "}
-                          {category.charAt(0).toUpperCase() + category.slice(1)}
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div> */}
-
-              <div className="category-select-container">
+              {/* <div className="category-select-container">
                 <div className="custom-select">
                   <button
                     ref={toggleRef}
@@ -637,6 +592,61 @@ const ForceGraph = () => {
                     </div>
                   )}
                 </div>
+              </div> */}
+
+              <div className="category-select-container">
+                <div className="custom-select">
+                  <button
+                    ref={toggleRef}
+                    className="select-toggle"
+                    onClick={handleDropdownToggle}
+                  >
+                    Select Categories ▼
+                  </button>
+
+                  {showDropdown && (
+                    <div className={`select-dropdown ${dropdownDirection}`}>
+                      <button
+                        className={`dropdown-button ${
+                          visibleCategories.length === categories.length
+                            ? "applied"
+                            : ""
+                        }`}
+                        onClick={handleToggleAllCategories}
+                      >
+                        <FontAwesomeIcon
+                          icon={
+                            visibleCategories.length === categories.length
+                              ? faEye
+                              : faEyeSlash
+                          }
+                        />{" "}
+                        All Categories
+                      </button>
+
+                      {categories.map((category) => (
+                        <button
+                          key={category}
+                          className={`category-button ${
+                            visibleCategories.includes(category)
+                              ? "applied"
+                              : ""
+                          }`}
+                          onClick={() => handleCategoryToggle(category)}
+                        >
+                          <FontAwesomeIcon
+                            icon={
+                              visibleCategories.includes(category)
+                                ? faEye
+                                : faEyeSlash
+                            }
+                          />{" "}
+                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="control-row">
@@ -660,15 +670,19 @@ const ForceGraph = () => {
 
           {/* Content Column - col-md-5 */}
           <div className="col-md-5 p-3 bg-light overflow-auto">
-            <div className="content-section">
+            <div className="search-content-section">
               <div className="container position-relative">
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Type to search (e.g. can)"
-                  value={query}
-                  onChange={handleInputChange}
-                />
+                <div className="search-wrapper mb-3">
+                  <i className="fa-solid fa-magnifying-glass search-icon"></i>
+                  <input
+                    type="text"
+                    className="form-control custom-search-input"
+                    placeholder="Type to search (e.g. cancer)"
+                    value={query}
+                    onChange={handleInputChange}
+                    aria-label="Search"
+                  />
+                </div>
 
                 {/* Suggestions Dropdown */}
                 {loadingSuggestions && (
@@ -689,31 +703,33 @@ const ForceGraph = () => {
                   </ul>
                 )}
 
-                {/* Results */}
-                {loadingResults && <p className="mt-4">Loading results...</p>}
-                {!loadingResults && results.length > 0 && (
-                  <div className="mt-4">
-                    <h5>
-                      Results for <mark>{selectedKeyword}</mark>:
-                    </h5>
-                    <ul className="list-group">
-                      {results.map((item) => (
-                        <li key={item.keyword} className="list-group-item">
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <strong>{item.keyword}</strong>
-                          </a>
-                          <p className="mb-0 small text-muted">
-                            {item.description}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                <div className="content-section ">
+                  {/* Results */}
+                  {loadingResults && <p className="mt-4">Loading results...</p>}
+                  {!loadingResults && results.length > 0 && (
+                    <div className="mt-4 data-content">
+                      <p>
+                        Results for <mark>{selectedKeyword}</mark>:
+                      </p>
+                      <ul className="list-group">
+                        {results.map((item) => (
+                          <li key={item.keyword} className="list-group-item">
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <strong>{item.keyword}</strong>
+                            </a>
+                            <p className="mb-0 small text-muted">
+                              {item.description}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
