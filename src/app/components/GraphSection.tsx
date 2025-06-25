@@ -1,7 +1,7 @@
 /* eslint-disable */
 
 "use client";
-
+// GraphSection.tsx
 import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -12,37 +12,24 @@ import {
   faSearchPlus,
   faSearchMinus,
 } from "@fortawesome/free-solid-svg-icons";
+
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-type KeywordItem = {
-  keyword: string;
-  url: string;
-  description: string;
-};
-
 const categories = ["diseases", "proteins", "genes", "chemicals", "drugs"];
 
-const ForceGraph = () => {
+const GraphSection = () => {
   const svgRef = useRef<SVGSVGElement>(null);
   const graphData = useRef<any>(null);
   const zoomRef = useRef<any>(null);
   const gRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleCategories, setVisibleCategories] = useState<string[]>([]);
-
-  const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<KeywordItem[]>([]);
-  const [selectedKeyword, setSelectedKeyword] = useState("");
-  const [results, setResults] = useState<KeywordItem[]>([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-  const [loadingResults, setLoadingResults] = useState(false);
-  const [suggestionSelected, setSuggestionSelected] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">(
     "down"
   );
-  const toggleRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -51,90 +38,22 @@ const ForceGraph = () => {
       graphData.current = data;
       initializeGraph();
     };
-
     loadData();
-
     return () => {
-      if (svgRef.current) {
-        svgRef.current.innerHTML = "";
-      }
+      if (svgRef.current) svgRef.current.innerHTML = "";
     };
   }, []);
-
-  useEffect(() => {
-    if (!query.trim() || suggestionSelected) {
-      setSuggestions([]);
-      return;
-    }
-
-    const fetchSuggestions = async () => {
-      setLoadingSuggestions(true);
-      try {
-        const res = await fetch(
-          `/api/search?keyword=${encodeURIComponent(query)}`
-        );
-        const data: KeywordItem[] = await res.json();
-        setSuggestions(data);
-      } catch (err) {
-        console.error("Suggestion fetch error", err);
-        setSuggestions([]);
-      } finally {
-        setLoadingSuggestions(false);
-      }
-    };
-
-    const timer = setTimeout(fetchSuggestions, 300);
-    return () => clearTimeout(timer);
-  }, [query, suggestionSelected]);
-
-  // Fetch final results when user selects a suggestion
-  useEffect(() => {
-    if (!selectedKeyword) return;
-
-    const fetchResults = async () => {
-      setLoadingResults(true);
-      try {
-        const res = await fetch(
-          `/api/search?keyword=${encodeURIComponent(selectedKeyword)}`
-        );
-        const data: KeywordItem[] = await res.json();
-        setResults(data);
-      } catch (err) {
-        console.error("Result fetch error", err);
-        setResults([]);
-      } finally {
-        setLoadingResults(false);
-      }
-    };
-
-    fetchResults();
-  }, [selectedKeyword]);
-
-  const handleSelectSuggestion = (text: string) => {
-    setQuery(text);
-    setSelectedKeyword(text);
-    setSuggestionSelected(true); // prevents further suggestions
-    setSuggestions([]); // hide current suggestions
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(e.target.value);
-    setSelectedKeyword("");
-    setResults([]);
-    setSuggestionSelected(false); // reset suggestion behavior
-  };
 
   const handleDropdownToggle = () => {
     if (toggleRef.current) {
       const rect = toggleRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
-      const dropdownHeight = 200; // Adjust this as per your design
-
+      const dropdownHeight = 200;
       setDropdownDirection(spaceBelow < dropdownHeight ? "up" : "down");
     }
-
     setShowDropdown((prev) => !prev);
   };
+
   const initializeGraph = () => {
     if (!svgRef.current || !graphData.current || !containerRef.current) return;
 
@@ -142,10 +61,19 @@ const ForceGraph = () => {
     const width = container.clientWidth;
     const height = container.clientHeight;
 
+    if (width === 0 || height === 0) return;
+
+    //  const svg = d3
+    //    .select(svgRef.current)
+    //    .attr("width", width)
+    //    .attr("height", height);
+
     const svg = d3
       .select(svgRef.current)
       .attr("width", width)
-      .attr("height", height);
+      .attr("height", height)
+      .attr("viewBox", `0 0 ${width} ${height}`)
+      .attr("preserveAspectRatio", "xMidYMid meet");
 
     svg.selectAll("*").remove();
 
@@ -160,7 +88,15 @@ const ForceGraph = () => {
         gRef.current.attr("transform", event.transform);
       });
 
+    const defaultTransform = d3.zoomIdentity
+      .translate(114.95293075308115, 110.566066263289)
+      .scale(0.6504939210424966);
+
+    // Call zoom behavior
     svg.call(zoomRef.current);
+
+    // Apply the default zoom and transform
+    svg.call(zoomRef.current.transform, defaultTransform);
 
     const simulation = d3
       .forceSimulation(graphData.current.nodes)
@@ -290,9 +226,9 @@ const ForceGraph = () => {
       )
       .html(
         (d: any) => `
-      <input type="checkbox" class="kcb" data-id="${d.id}" onchange="handleCheckboxChange('${d.id}', '${d.keyword}', this.checked)">
-      <span class="${d.textClass}">${d.keyword}</span>
-    `
+       <input type="checkbox" class="kcb" data-id="${d.id}" onchange="handleCheckboxChange('${d.id}', '${d.keyword}', this.checked)">
+       <span class="${d.textClass}">${d.keyword}</span>
+     `
       );
 
     (window as any).handleCheckboxChange = function (
@@ -507,8 +443,6 @@ const ForceGraph = () => {
     if (typeof window !== "undefined" && (window as any).toggleCategory) {
       (window as any).toggleCategory(category);
     }
-
-    // Toggle local state
     setVisibleCategories((prev) =>
       prev.includes(category)
         ? prev.filter((c) => c !== category)
@@ -520,7 +454,6 @@ const ForceGraph = () => {
     if (typeof window !== "undefined" && (window as any).toggleAllCategories) {
       (window as any).toggleAllCategories();
     }
-
     if (visibleCategories.length === categories.length) {
       setVisibleCategories([]);
     } else {
@@ -545,158 +478,73 @@ const ForceGraph = () => {
   };
 
   return (
-    <div className="container-fluid p-0">
-      <div className="container-fluid d-flex flex-column">
-        <div className="row">          
-          <div className="col-md-7 d-flex flex-column p-0">
-            <div ref={containerRef} className="flex-grow-1 position-relative">
-              <div className="background-text">
-                <h1>Cancer</h1>
-                <p>Some Text Here | Some Text Here | Some Text Here</p>
-              </div>
-              <div className="category-select-container">
-                <div className="custom-select">
-                  <button
-                    ref={toggleRef}
-                    className="select-toggle"
-                    onClick={handleDropdownToggle}
-                  >
-                    Select Categories ▼
-                  </button>
-
-                  {showDropdown && (
-                    <div className={`select-dropdown ${dropdownDirection}`}>
-                      <button
-                        className={`dropdown-button ${
-                          visibleCategories.length === categories.length
-                            ? "applied"
-                            : ""
-                        }`}
-                        onClick={handleToggleAllCategories}
-                      >
-                        <FontAwesomeIcon
-                          icon={
-                            visibleCategories.length === categories.length
-                              ? faEye
-                              : faEyeSlash
-                          }
-                        />{" "}
-                        All Categories
-                      </button>
-
-                      {categories.map((category) => (
-                        <button
-                          key={category}
-                          className={`category-button ${
-                            visibleCategories.includes(category)
-                              ? "applied"
-                              : ""
-                          }`}
-                          onClick={() => handleCategoryToggle(category)}
-                        >
-                          <FontAwesomeIcon
-                            icon={
-                              visibleCategories.includes(category)
-                                ? faEye
-                                : faEyeSlash
-                            }
-                          />{" "}
-                          {category.charAt(0).toUpperCase() + category.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="control-row">
-                <button className="circle-button" onClick={handleZoomIn}>
-                  <FontAwesomeIcon icon={faSearchPlus} />
-                </button>
-                <button className="circle-button" onClick={handleZoomOut}>
-                  <FontAwesomeIcon icon={faSearchMinus} />
-                </button>
+    <div ref={containerRef} className="flex-grow-1 position-relative">
+      <div className="background-text">
+        <h1>Cancer</h1>
+        <p>Some Text Here | Some Text Here | Some Text Here</p>
+      </div>
+      <div className="category-select-container">
+        <div className="custom-select">
+          <button
+            ref={toggleRef}
+            className="select-toggle"
+            onClick={handleDropdownToggle}
+          >
+            Select Categories ▼
+          </button>
+          {showDropdown && (
+            <div className={`select-dropdown ${dropdownDirection}`}>
+              <button
+                className={`dropdown-button ${
+                  visibleCategories.length === categories.length
+                    ? "applied"
+                    : ""
+                }`}
+                onClick={handleToggleAllCategories}
+              >
+                <FontAwesomeIcon
+                  icon={
+                    visibleCategories.length === categories.length
+                      ? faEye
+                      : faEyeSlash
+                  }
+                />{" "}
+                All Categories
+              </button>
+              {categories.map((category) => (
                 <button
-                  className="circle-button green"
-                  onClick={handleDownload}
+                  key={category}
+                  className={`category-button ${
+                    visibleCategories.includes(category) ? "applied" : ""
+                  }`}
+                  onClick={() => handleCategoryToggle(category)}
                 >
-                  <FontAwesomeIcon icon={faDownload} />
+                  <FontAwesomeIcon
+                    icon={
+                      visibleCategories.includes(category) ? faEye : faEyeSlash
+                    }
+                  />{" "}
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
                 </button>
-              </div>
-
-              <svg ref={svgRef} className="d3-svg-section"></svg>
+              ))}
             </div>
-          </div>
-
-          {/* Content Column - col-md-5 */}
-          <div className="col-md-5 p-3 bg-light overflow-auto">
-            <div className="search-content-section">
-              <div className="container position-relative">
-                <div className="search-wrapper mb-3">
-                  <i className="fa-solid fa-magnifying-glass search-icon"></i>
-                  <input
-                    type="text"
-                    className="form-control custom-search-input"
-                    placeholder="Type to search (e.g. cancer)"
-                    value={query}
-                    onChange={handleInputChange}
-                    aria-label="Search"
-                  />
-                </div>
-
-                {/* Suggestions Dropdown */}
-                {loadingSuggestions && (
-                  <p className="mt-2">Loading suggestions...</p>
-                )}
-                {!loadingSuggestions && suggestions.length > 0 && (
-                  <ul className="list-group position-absolute w-100 z-3">
-                    {suggestions.map((item) => (
-                      <li
-                        key={item.keyword}
-                        className="list-group-item list-group-item-action"
-                        style={{ cursor: "pointer" }}
-                        onClick={() => handleSelectSuggestion(item.keyword)}
-                      >
-                        {item.keyword}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <div className="content-section ">
-                  {/* Results */}
-                  {loadingResults && <p className="mt-4">Loading results...</p>}
-                  {!loadingResults && results.length > 0 && (
-                    <div className="mt-4 data-content">
-                      <p>
-                        Results for <mark>{selectedKeyword}</mark>:
-                      </p>
-                      <ul className="list-group">
-                        {results.map((item) => (
-                          <li key={item.keyword} className="list-group-item">
-                            <a
-                              href={item.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <strong>{item.keyword}</strong>
-                            </a>
-                            <p className="mb-0 small text-muted">
-                              {item.description}
-                            </p>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
+      <div className="control-row">
+        <button className="circle-button" onClick={handleZoomIn}>
+          <FontAwesomeIcon icon={faSearchPlus} />
+        </button>
+        <button className="circle-button" onClick={handleZoomOut}>
+          <FontAwesomeIcon icon={faSearchMinus} />
+        </button>
+        <button className="circle-button green" onClick={handleDownload}>
+          <FontAwesomeIcon icon={faDownload} />
+        </button>
+      </div>
+      <svg ref={svgRef} className="d3-svg-section"></svg>
     </div>
   );
 };
 
-export default ForceGraph;
+export default GraphSection;
