@@ -77,7 +77,8 @@ const MainComponent = () => {
         searchRef.current &&
         !searchRef.current.contains(event.target as Node)
       ) {
-        setSuggestions([]); // close suggestions
+        setSuggestions([]);
+        setHasSearched(false); // 👈 prevent "no suggestions" on outside click
       }
     };
 
