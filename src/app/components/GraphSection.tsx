@@ -16,7 +16,13 @@ import {
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-const categories = ["diseases", "proteins", "genes", "chemicals", "drugs"];
+interface GraphNode {
+  id: string;
+  category: string;
+  [key: string]: any;
+}
+
+// const categories = ["diseases", "proteins", "genes", "chemicals", "drugs"];
 
 const GraphSection = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -30,19 +36,30 @@ const GraphSection = () => {
   const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">(
     "down"
   );
+  const [dynamicCategories, setDynamicCategories] = useState<string[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
       const response = await fetch("/api/graph-data");
       const data = await response.json();
       graphData.current = data;
+
+      const uniqueCategories = Array.from(
+        new Set((data.nodes as GraphNode[]).map((node) => node.category))
+      );
+      setDynamicCategories(uniqueCategories);
+
       initializeGraph();
     };
+
     loadData();
+
     return () => {
       if (svgRef.current) svgRef.current.innerHTML = "";
     };
   }, []);
+
+  console.log("graph data", dynamicCategories);
 
   const handleDropdownToggle = () => {
     if (toggleRef.current) {
@@ -97,6 +114,19 @@ const GraphSection = () => {
 
     // Apply the default zoom and transform
     svg.call(zoomRef.current.transform, defaultTransform);
+
+    // Filter out links where source or target node is missing from nodes list
+    const nodeIds = new Set(
+      graphData.current.nodes.map((node: any) => node.id)
+    );
+    graphData.current.links = graphData.current.links.filter((link: any) => {
+      // source and target could be string IDs or objects (depending on how data is parsed)
+      const sourceId =
+        typeof link.source === "string" ? link.source : link.source?.id;
+      const targetId =
+        typeof link.target === "string" ? link.target : link.target?.id;
+      return nodeIds.has(sourceId) && nodeIds.has(targetId);
+    });
 
     const simulation = d3
       .forceSimulation(graphData.current.nodes)
@@ -340,14 +370,7 @@ const GraphSection = () => {
     };
 
     function initializeButtonStates() {
-      const categories = [
-        "diseases",
-        "proteins",
-        "genes",
-        "chemicals",
-        "drugs",
-      ];
-      categories.forEach((category) => {
+      dynamicCategories.forEach((category) => {
         const button = document.getElementById(`button-${category}`);
         if (button) {
           const isActive = graphData.current.nodes.some(
@@ -454,10 +477,10 @@ const GraphSection = () => {
     if (typeof window !== "undefined" && (window as any).toggleAllCategories) {
       (window as any).toggleAllCategories();
     }
-    if (visibleCategories.length === categories.length) {
+    if (visibleCategories.length === dynamicCategories.length) {
       setVisibleCategories([]);
     } else {
-      setVisibleCategories([...categories]);
+      setVisibleCategories([...dynamicCategories]);
     }
   };
 
@@ -496,7 +519,7 @@ const GraphSection = () => {
             <div className={`select-dropdown ${dropdownDirection}`}>
               <button
                 className={`dropdown-button ${
-                  visibleCategories.length === categories.length
+                  visibleCategories.length === dynamicCategories.length
                     ? "applied"
                     : ""
                 }`}
@@ -504,14 +527,14 @@ const GraphSection = () => {
               >
                 <FontAwesomeIcon
                   icon={
-                    visibleCategories.length === categories.length
+                    visibleCategories.length === dynamicCategories.length
                       ? faEye
                       : faEyeSlash
                   }
                 />{" "}
                 All Categories
               </button>
-              {categories.map((category) => (
+              {dynamicCategories.map((category) => (
                 <button
                   key={category}
                   className={`category-button ${

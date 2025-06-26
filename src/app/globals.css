@@ -457,7 +457,7 @@ foreignObject div.drugs_main {
   background-color: transparent;
   transition: background-color 0.3s;
   margin: 6px 0px;
-  border-radius: 10px !important;
+  border-radius: 30px !important;
 }
 
 .sidebar-menu .list-group-item.active {
