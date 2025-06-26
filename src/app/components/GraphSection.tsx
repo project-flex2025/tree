@@ -111,7 +111,7 @@ const GraphSection = () => {
     // Set up zoom behavior
     zoomRef.current = d3
       .zoom()
-      .scaleExtent([0.5, 4])
+      .scaleExtent([0.2, 4])
       .on("zoom", (event) => {
         gRef.current.attr("transform", event.transform);
       });
