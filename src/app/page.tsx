@@ -142,7 +142,7 @@ const MainComponent = () => {
                         {item.categories.slice(0, 3).map((cat, idx) => (
                           <span
                             key={idx}
-                            className="badge"
+                            className="badge pb-1"
                             style={{
                               backgroundColor:
                                 badgeColors[idx % badgeColors.length],

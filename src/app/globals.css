@@ -437,6 +437,7 @@ foreignObject div.drugs_main {
 .suggestion-badge .badge {
   padding: 2px 4px;
   margin-left: 6px;
+  height: fit-content !important;
 }
 
 /* Custom Input Styling */
