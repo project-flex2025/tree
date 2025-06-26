@@ -145,7 +145,7 @@ a {
 }
 
 .category-button.applied {
-  background-color: #007bff;
+  background-color: #4499ed;
 }
 
 .category-button.applied:hover {
@@ -203,7 +203,7 @@ foreignObject div.drugs_main {
 .control-button {
   padding: 5px 10px;
   margin: 5px;
-  background-color: #007bff;
+  background-color: #4499ed;
   color: white;
   border: none;
   border-radius: 5px;
@@ -310,7 +310,7 @@ foreignObject div.drugs_main {
 
 .select-toggle {
   padding: 6px 12px;
-  background-color: #007bff;
+  background-color: #4499ed;
   color: white;
   border: none;
   border-radius: 5px;
@@ -352,7 +352,7 @@ foreignObject div.drugs_main {
 
 .select-dropdown .select-toggle {
   padding: 8px 12px;
-  background-color: #007bff;
+  background-color: #4499ed;
   color: white;
   border: none;
   border-radius: 4px;
@@ -384,7 +384,7 @@ foreignObject div.drugs_main {
 }
 
 .circle-button {
-  background-color: #007bff;
+  background-color: #4499ed;
   color: white;
   border: none;
   border-radius: 50%;
@@ -402,11 +402,11 @@ foreignObject div.drugs_main {
 }
 
 .circle-button.green {
-  background-color: #28a745;
+  background-color: #092c60;
 }
 
 .circle-button.green:hover {
-  background-color: #218838;
+  background-color: #2474ec;
 }
 
 /* ============ search============ */
@@ -467,7 +467,7 @@ foreignObject div.drugs_main {
 }
 
 .sidebar-menu .list-group-item.active {
-  background-color: #007bff;
+  background-color: #4499ed;
   color: #fff;
   border-radius: 20px;
 }
@@ -510,7 +510,7 @@ foreignObject div.drugs_main {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: #007bff;
+  background-color: #4499ed;
 }
 
 .nodes-count-section {
@@ -522,12 +522,12 @@ foreignObject div.drugs_main {
   flex-direction: column;
 }
 .node-head {
-  color: #3535f2;
+  color: #4499ed;
   font-weight: 600;
 }
 .nodes-count {
-  background-color: #3535f2;
-  padding: 4px 5px;
+  background-color: #4499ed;
+  padding: 1px 5px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -538,8 +538,8 @@ foreignObject div.drugs_main {
 }
 
 .nodes-count .node-icon {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -547,11 +547,12 @@ foreignObject div.drugs_main {
   background-color: #fff;
   border-radius: 10px;
   cursor: pointer;
+  font-size: 12px;
 }
 
 /* ============ years selection section ======== */
 
-.year-select-section {
+/* .year-select-section {
   position: absolute;
   right: 20px;
   bottom: 20px;
@@ -561,7 +562,7 @@ foreignObject div.drugs_main {
 }
 
 .years-count {
-  background-color: #3535f2;
+  background-color: #4499ed;
   padding: 4px 5px;
   display: flex;
   justify-content: space-between;
@@ -585,6 +586,41 @@ foreignObject div.drugs_main {
   border-radius: 10px;
   font-size: 12px;
   cursor: pointer;
+} */
+
+.year-select-section {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.years-count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.years-count span {
+  color: #000;
+  font-size: 14px;
+}
+
+.year-icon {
+  font-size: 12px;
+  color: #000;
+  cursor: pointer;
+}
+
+.year-gradient-bar {
+  width: 150px;
+  height: 12px;
+  border-radius: 5px;
+  /* margin-right: 10px; */
+  background: linear-gradient(to right, #a7d3ff, #092c60);
 }
 
 @media screen and (min-width: 825px) and (max-width: 1024px) {
@@ -685,7 +721,7 @@ foreignObject div.drugs_main {
   }
 
   .circle-button {
-    background-color: #007bff;
+    background-color: #4499ed;
     color: white;
     border: none;
     border-radius: 50%;
@@ -700,7 +736,7 @@ foreignObject div.drugs_main {
   .select-toggle {
     color: #fff;
     cursor: pointer;
-    background-color: #007bff;
+    background-color: #4499ed;
     border: none;
     border-radius: 5px;
     padding: 2px 6px;
@@ -782,7 +818,7 @@ foreignObject div.drugs_main {
   }
 
   .circle-button {
-    background-color: #007bff;
+    background-color: #4499ed;
     color: white;
     border: none;
     border-radius: 50%;
@@ -797,7 +833,7 @@ foreignObject div.drugs_main {
   .select-toggle {
     color: #fff;
     cursor: pointer;
-    background-color: #007bff;
+    background-color: #4499ed;
     border: none;
     border-radius: 5px;
     padding: 2px 6px;
@@ -878,7 +914,7 @@ foreignObject div.drugs_main {
   }
 
   .circle-button {
-    background-color: #007bff;
+    background-color: #4499ed;
     color: white;
     border: none;
     border-radius: 50%;
@@ -893,7 +929,7 @@ foreignObject div.drugs_main {
   .select-toggle {
     color: #fff;
     cursor: pointer;
-    background-color: #007bff;
+    background-color: #4499ed;
     border: none;
     border-radius: 5px;
     padding: 2px 6px;
@@ -975,7 +1011,7 @@ foreignObject div.drugs_main {
   }
 
   .circle-button {
-    background-color: #007bff;
+    background-color: #4499ed;
     color: white;
     border: none;
     border-radius: 50%;
@@ -990,7 +1026,7 @@ foreignObject div.drugs_main {
   .select-toggle {
     color: #fff;
     cursor: pointer;
-    background-color: #007bff;
+    background-color: #4499ed;
     border: none;
     border-radius: 5px;
     padding: 2px 6px;

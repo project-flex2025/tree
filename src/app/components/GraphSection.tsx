@@ -570,24 +570,11 @@ const GraphSection = () => {
         <div className="node-head">Nodes</div>
         <div className="nodes-count">
           <div className="node-icon me-2">
-            <i className="fa-solid fa-plus"></i>
-          </div>
-          <span>890</span>
-          <div className="node-icon ms-2">
-            <i className="fa-solid fa-minus"></i>
-          </div>
-        </div>
-      </div>
-
-      <div className="nodes-count-section">
-        <div className="node-head">Nodes</div>
-        <div className="nodes-count">
-          <div className="node-icon me-2">
-            <i className="fa-solid fa-plus" onClick={handleDecreaseNode}></i>
+            <i className="fa-solid fa-minus" onClick={handleDecreaseNode}></i>
           </div>
           <span>{nodesCount}</span>
           <div className="node-icon ms-2">
-            <i className="fa-solid fa-minus" onClick={handleIncreaseNode}></i>
+            <i className="fa-solid fa-plus" onClick={handleIncreaseNode}></i>
           </div>
         </div>
       </div>
@@ -614,8 +601,9 @@ const GraphSection = () => {
         </div>
       </div> */}
 
-      <div className="year-select-section">
-        {/* Min Year */}
+      {/* <div className="year-select-section">
+        <div className="year-gradient-bar"></div>
+       
         <div className="years-count me-2">
           <div className="year-icon">
             <i
@@ -631,9 +619,8 @@ const GraphSection = () => {
             ></i>
           </div>
         </div>
-
-        {/* Max Year */}
-        <div className="years-count">
+       
+        <div className="years-count ms-2">
           <div className="year-icon">
             <i
               className="fa-solid fa-minus fa-xs"
@@ -645,6 +632,38 @@ const GraphSection = () => {
           <div className="year-icon">
             <i
               className="fa-solid fa-plus fa-xs"
+              onClick={handleIncreaseMax}
+            ></i>
+          </div>
+        </div>
+      </div> */}
+
+      <div className="year-select-section">
+        <div className="year-gradient-bar"></div>
+
+        <div className="d-flex w-100 justify-content-between">
+          {/* Min Year */}
+          <div className="years-count me-2">
+            <i
+              className="fa-solid fa-minus fa-xs year-icon"
+              onClick={handleDecreaseMin}
+            ></i>
+            <span className="fw-medium">{minYear}</span>
+            <i
+              className="fa-solid fa-plus fa-xs year-icon"
+              onClick={handleIncreaseMin}
+            ></i>
+          </div>
+
+          {/* Max Year */}
+          <div className="years-count ms-2">
+            <i
+              className="fa-solid fa-minus fa-xs year-icon"
+              onClick={handleDecreaseMax}
+            ></i>
+            <span className="fw-medium">{maxYear}</span>
+            <i
+              className="fa-solid fa-plus fa-xs year-icon"
               onClick={handleIncreaseMax}
             ></i>
           </div>

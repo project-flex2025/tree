@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import GraphSection from "./components/GraphSection";
 import SearchResultsSection from "./components/SearchResultsSection";
 import SidebarMenu from "./components/Sidebar";
@@ -12,6 +12,7 @@ type KeywordItem = {
 };
 
 const MainComponent = () => {
+  const searchRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [selectedKeyword, setSelectedKeyword] = useState("");
   const [suggestions, setSuggestions] = useState<KeywordItem[]>([]);
@@ -19,12 +20,14 @@ const MainComponent = () => {
   const [suppressSuggestions, setSuppressSuggestions] = useState(false);
   const [fetchedCategories, setFetchedCategories] = useState<string[]>([]);
   const [staticCategoriesShown, setStaticCategoriesShown] = useState(true);
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     if (!query.trim()) {
       setSuggestions([]);
       setFetchedCategories([]);
       setStaticCategoriesShown(true);
+      setHasSearched(false); // reset
       return;
     }
 
@@ -55,6 +58,7 @@ const MainComponent = () => {
         }
 
         setSuggestions(data?.suggestions || []);
+        setHasSearched(true);
       } catch (err) {
         console.error("Suggestion fetching failed:", err);
         setSuggestions([]);
@@ -66,6 +70,22 @@ const MainComponent = () => {
     const timer = setTimeout(fetchSuggestions, 300);
     return () => clearTimeout(timer);
   }, [query, suppressSuggestions]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
+        setSuggestions([]); // close suggestions
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
@@ -100,7 +120,10 @@ const MainComponent = () => {
     <div className="container-fluid p-0">
       <div className="container-fluid">
         <div className=" d-flex justify-content-center">
-          <div className="search-wrapper my-3 position-relative">
+          <div
+            className="search-wrapper my-3 position-relative"
+            ref={searchRef}
+          >
             <i className="fa-solid fa-magnifying-glass search-icon"></i>
             <input
               type="text"
@@ -131,11 +154,6 @@ const MainComponent = () => {
                       handleSelectSuggestion(item.general_name, item.categories)
                     }
                   >
-                    {/* {item.general_name}
-                    {item.categories?.length > 0 && (
-                      <span className="text-muted"> ({item.categories.join(", ")})</span>
-                    )} */}
-
                     <div className="d-flex">
                       <span className="fw-bold">{item.general_name}</span>
                       <div className="d-flex suggestion-badge flex-wrap gap-1 mt-1">
@@ -167,6 +185,18 @@ const MainComponent = () => {
                 ))}
               </ul>
             )}
+
+            {!loadingSuggestions &&
+              query.length >= 3 &&
+              suggestions.length === 0 &&
+              hasSearched && (
+                <div
+                  className="position-absolute bg-white p-2 rounded shadow-sm text-start w-100"
+                  style={{ top: "100%", left: 0, zIndex: 100 }}
+                >
+                  No suggestions found.
+                </div>
+              )}
           </div>
         </div>
 
