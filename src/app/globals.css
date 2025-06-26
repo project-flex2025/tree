@@ -443,6 +443,11 @@ foreignObject div.drugs_main {
   font-size: 1rem;
 }
 
+.suggestion-badge .badge{
+  padding: 2px 4px;
+  margin-left: 6px;
+}
+
 /* Custom Input Styling */
 .custom-search-input {
   padding-left: 2rem !important;

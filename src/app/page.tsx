@@ -39,10 +39,12 @@ const MainComponent = () => {
       try {
         let res = await fetch(`/api/proxy?q=${query}&type=suggest`);
         let data = await res.json();
+        console.log("data 1",data)
 
         if (!data?.suggestions?.length) {
           res = await fetch(`/api/proxy?q=${query}&type=search`);
           data = await res.json();
+           console.log("data 2",data)
         }
 
         if (!data?.suggestions?.length) {
@@ -50,6 +52,7 @@ const MainComponent = () => {
             `/api/proxy?q=${query}&type=search&search_field=all_names`
           );
           data = await res.json();
+           console.log("data 3",data)
         }
 
         setSuggestions(data?.suggestions || []);
@@ -139,7 +142,7 @@ const MainComponent = () => {
 
                     <div className="d-flex">
                       <span className="fw-bold">{item.general_name}</span>
-                      <div className="d-flex flex-wrap gap-1 mt-1">
+                      <div className="d-flex suggestion-badge flex-wrap gap-1 mt-1">
                         {item.categories.slice(0, 3).map((cat, idx) => (
                           <span
                             key={idx}
