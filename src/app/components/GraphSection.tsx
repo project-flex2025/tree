@@ -38,6 +38,19 @@ const GraphSection = () => {
   );
   const [dynamicCategories, setDynamicCategories] = useState<string[]>([]);
 
+  const [minYear, setMinYear] = useState(2020);
+  const [maxYear, setMaxYear] = useState(2025);
+  const [nodesCount, setNodesCount] = useState(680);
+
+  const handleDecreaseMin = () => setMinYear((prev) => prev - 1);
+  const handleIncreaseMin = () => setMinYear((prev) => prev + 1);
+
+  const handleDecreaseMax = () => setMaxYear((prev) => prev - 1);
+  const handleIncreaseMax = () => setMaxYear((prev) => prev + 1);
+
+  const handleIncreaseNode = () => setNodesCount((prev) => prev + 1);
+  const handleDecreaseNode = () => setNodesCount((prev) => prev - 1);
+
   useEffect(() => {
     const loadData = async () => {
       const response = await fetch("/api/graph-data");
@@ -58,7 +71,6 @@ const GraphSection = () => {
       if (svgRef.current) svgRef.current.innerHTML = "";
     };
   }, []);
-
 
   const handleDropdownToggle = () => {
     if (toggleRef.current) {
@@ -505,7 +517,7 @@ const GraphSection = () => {
         <h1>Cancer</h1>
         <p>Some Text Here | Some Text Here | Some Text Here</p>
       </div>
-      <div className="category-select-container">
+      {/* <div className="category-select-container">
         <div className="custom-select">
           <button
             ref={toggleRef}
@@ -552,7 +564,93 @@ const GraphSection = () => {
             </div>
           )}
         </div>
+      </div> */}
+
+      <div className="nodes-count-section">
+        <div className="node-head">Nodes</div>
+        <div className="nodes-count">
+          <div className="node-icon me-2">
+            <i className="fa-solid fa-plus"></i>
+          </div>
+          <span>890</span>
+          <div className="node-icon ms-2">
+            <i className="fa-solid fa-minus"></i>
+          </div>
+        </div>
       </div>
+
+      <div className="nodes-count-section">
+        <div className="node-head">Nodes</div>
+        <div className="nodes-count">
+          <div className="node-icon me-2">
+            <i className="fa-solid fa-plus" onClick={handleDecreaseNode}></i>
+          </div>
+          <span>{nodesCount}</span>
+          <div className="node-icon ms-2">
+            <i className="fa-solid fa-minus" onClick={handleIncreaseNode}></i>
+          </div>
+        </div>
+      </div>
+
+      {/* <div className="year-select-section">
+        <div className="years-count">
+          <div className="node-icon me-2">
+            <i className="fa-solid fa-plus"></i>
+          </div>
+          <span>2020</span>
+          <div className="node-icon ms-2">
+            <i className="fa-solid fa-minus"></i>
+          </div>
+        </div>
+
+        <div className="years-count">
+          <div className="node-icon me-2">
+            <i className="fa-solid fa-plus"></i>
+          </div>
+          <span>2025</span>
+          <div className="node-icon ms-2">
+            <i className="fa-solid fa-minus"></i>
+          </div>
+        </div>
+      </div> */}
+
+      <div className="year-select-section">
+        {/* Min Year */}
+        <div className="years-count me-2">
+          <div className="year-icon">
+            <i
+              className="fa-solid fa-minus fa-xs"
+              onClick={handleDecreaseMin}
+            ></i>
+          </div>
+          <span className="fw-medium">{minYear}</span>
+          <div className="year-icon">
+            <i
+              className="fa-solid fa-plus fa-xs"
+              onClick={handleIncreaseMin}
+            ></i>
+          </div>
+        </div>
+
+        {/* Max Year */}
+        <div className="years-count">
+          <div className="year-icon">
+            <i
+              className="fa-solid fa-minus fa-xs"
+              onClick={handleDecreaseMax}
+            ></i>
+          </div>
+
+          <span className="fw-medium">{maxYear}</span>
+          <div className="year-icon">
+            <i
+              className="fa-solid fa-plus fa-xs"
+              onClick={handleIncreaseMax}
+            ></i>
+          </div>
+        </div>
+      </div>
+
       <div className="control-row">
         <button className="circle-button" onClick={handleZoomIn}>
           <FontAwesomeIcon icon={faSearchPlus} />

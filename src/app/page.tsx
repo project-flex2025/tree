@@ -1,5 +1,3 @@
-
-
 "use client";
 import { useEffect, useState } from "react";
 import GraphSection from "./components/GraphSection";
@@ -30,7 +28,8 @@ const MainComponent = () => {
       return;
     }
 
-    if (suppressSuggestions) {
+    // Only proceed if user has entered at least 3 characters
+    if (query.trim().length < 3 || suppressSuggestions) {
       return;
     }
 
@@ -39,12 +38,12 @@ const MainComponent = () => {
       try {
         let res = await fetch(`/api/proxy?q=${query}&type=suggest`);
         let data = await res.json();
-        console.log("data 1",data)
+        console.log("data 1", data);
 
         if (!data?.suggestions?.length) {
           res = await fetch(`/api/proxy?q=${query}&type=search`);
           data = await res.json();
-           console.log("data 2",data)
+          console.log("data 2", data);
         }
 
         if (!data?.suggestions?.length) {
@@ -52,7 +51,7 @@ const MainComponent = () => {
             `/api/proxy?q=${query}&type=search&search_field=all_names`
           );
           data = await res.json();
-           console.log("data 3",data)
+          console.log("data 3", data);
         }
 
         setSuggestions(data?.suggestions || []);
@@ -97,17 +96,16 @@ const MainComponent = () => {
     "#2c3e50",
   ];
 
-
   return (
     <div className="container-fluid p-0">
       <div className="container-fluid">
-        <div className="d-flex justify-content-center">
-          <div className="search-wrapper my-3 position-relative w-25">
+        <div className=" d-flex justify-content-center">
+          <div className="search-wrapper my-3 position-relative">
             <i className="fa-solid fa-magnifying-glass search-icon"></i>
             <input
               type="text"
               className="form-control custom-search-input"
-              placeholder="Type to search (e.g. cancer)"
+              placeholder="Search for....."
               value={query}
               onChange={handleInputChange}
               aria-label="Search"
@@ -133,9 +131,7 @@ const MainComponent = () => {
                       handleSelectSuggestion(item.general_name, item.categories)
                     }
                   >
-
-                    
-                     {/* {item.general_name}
+                    {/* {item.general_name}
                     {item.categories?.length > 0 && (
                       <span className="text-muted"> ({item.categories.join(", ")})</span>
                     )} */}
