@@ -59,7 +59,6 @@ const GraphSection = () => {
     };
   }, []);
 
-  console.log("graph data", dynamicCategories);
 
   const handleDropdownToggle = () => {
     if (toggleRef.current) {

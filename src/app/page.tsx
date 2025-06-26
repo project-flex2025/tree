@@ -1,4 +1,4 @@
-/* eslint-disable */
+
 
 "use client";
 import { useEffect, useState } from "react";
@@ -8,8 +8,9 @@ import SidebarMenu from "./components/Sidebar";
 
 type KeywordItem = {
   keyword: string;
-  url: string;
-  description: string;
+  id: string;
+  general_name: string;
+  categories: string[];
 };
 
 const MainComponent = () => {
@@ -17,23 +18,43 @@ const MainComponent = () => {
   const [selectedKeyword, setSelectedKeyword] = useState("");
   const [suggestions, setSuggestions] = useState<KeywordItem[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-  const [suppressSuggestions, setSuppressSuggestions] = useState(false); // 👈
+  const [suppressSuggestions, setSuppressSuggestions] = useState(false);
+  const [fetchedCategories, setFetchedCategories] = useState<string[]>([]);
+  const [staticCategoriesShown, setStaticCategoriesShown] = useState(true);
 
   useEffect(() => {
-    if (!query.trim() || suppressSuggestions) {
+    if (!query.trim()) {
       setSuggestions([]);
+      setFetchedCategories([]);
+      setStaticCategoriesShown(true);
+      return;
+    }
+
+    if (suppressSuggestions) {
       return;
     }
 
     const fetchSuggestions = async () => {
       setLoadingSuggestions(true);
       try {
-        const res = await fetch(
-          `/api/search?keyword=${encodeURIComponent(query)}`
-        );
-        const data: KeywordItem[] = await res.json();
-        setSuggestions(data);
-      } catch {
+        let res = await fetch(`/api/proxy?q=${query}&type=suggest`);
+        let data = await res.json();
+
+        if (!data?.suggestions?.length) {
+          res = await fetch(`/api/proxy?q=${query}&type=search`);
+          data = await res.json();
+        }
+
+        if (!data?.suggestions?.length) {
+          res = await fetch(
+            `/api/proxy?q=${query}&type=search&search_field=all_names`
+          );
+          data = await res.json();
+        }
+
+        setSuggestions(data?.suggestions || []);
+      } catch (err) {
+        console.error("Suggestion fetching failed:", err);
         setSuggestions([]);
       } finally {
         setLoadingSuggestions(false);
@@ -42,25 +63,42 @@ const MainComponent = () => {
 
     const timer = setTimeout(fetchSuggestions, 300);
     return () => clearTimeout(timer);
-  }, [query, suppressSuggestions]); // 👈 observe both
+  }, [query, suppressSuggestions]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
     setSelectedKeyword("");
-    setSuppressSuggestions(false); // 👈 allow suggestions again when user types
+    setSuppressSuggestions(false);
   };
 
-  const handleSelectSuggestion = (keyword: string) => {
-    setQuery(keyword);
-    setSelectedKeyword(keyword);
+  const handleSelectSuggestion = (
+    generalName: string,
+    categories: string[]
+  ) => {
+    setQuery(generalName);
+    setSelectedKeyword(generalName);
     setSuggestions([]);
-    setSuppressSuggestions(true); // 👈 suppress suggestion fetching
+    setSuppressSuggestions(true);
+    setFetchedCategories(categories);
+    setStaticCategoriesShown(false);
   };
+
+  // Random color palette for category tags (by index)
+  const badgeColors = [
+    "#e74c3c",
+    "#3498db",
+    "#8e44ad",
+    "#27ae60",
+    "#f39c12",
+    "#1abc9c",
+    "#2c3e50",
+  ];
+
 
   return (
     <div className="container-fluid p-0">
       <div className="container-fluid">
-        <div className="* d-flex justify-content-center">
+        <div className="d-flex justify-content-center">
           <div className="search-wrapper my-3 position-relative w-25">
             <i className="fa-solid fa-magnifying-glass search-icon"></i>
             <input
@@ -73,30 +111,74 @@ const MainComponent = () => {
             />
 
             {loadingSuggestions && (
-              <p className="mt-2">Loading suggestions...</p>
+              <p
+                className="mt-2 position-absolute bg-white p-2 rounded shadow-sm"
+                style={{ top: "100%", left: 0, zIndex: 100 }}
+              >
+                Loading suggestions...
+              </p>
             )}
 
             {!loadingSuggestions && suggestions.length > 0 && (
-              <ul className="list-group position-absolute w-100 z-3">
+              <ul className="list-group position-absolute w-100 mt-5 z-3">
                 {suggestions.map((item) => (
                   <li
-                    key={item.keyword}
+                    key={item.id}
                     className="list-group-item list-group-item-action"
                     style={{ cursor: "pointer" }}
-                    onClick={() => handleSelectSuggestion(item.keyword)}
+                    onClick={() =>
+                      handleSelectSuggestion(item.general_name, item.categories)
+                    }
                   >
-                    {item.keyword}
+
+                    
+                     {/* {item.general_name}
+                    {item.categories?.length > 0 && (
+                      <span className="text-muted"> ({item.categories.join(", ")})</span>
+                    )} */}
+
+                    <div className="d-flex">
+                      <span className="fw-bold">{item.general_name}</span>
+                      <div className="d-flex flex-wrap gap-1 mt-1">
+                        {item.categories.slice(0, 3).map((cat, idx) => (
+                          <span
+                            key={idx}
+                            className="badge"
+                            style={{
+                              backgroundColor:
+                                badgeColors[idx % badgeColors.length],
+                              color: "#fff",
+                              fontSize: "0.75rem",
+                            }}
+                          >
+                            {cat}
+                          </span>
+                        ))}
+                        {item.categories.length > 3 && (
+                          <span
+                            className="badge bg-secondary"
+                            style={{ fontSize: "0.75rem" }}
+                          >
+                            & more
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </li>
                 ))}
               </ul>
             )}
           </div>
         </div>
+
         <hr />
 
         <div className="row">
           <div className="col-md-2 col-lg-2 p-3 bg-light overflow-auto">
-           <SidebarMenu />
+            <SidebarMenu
+              categories={fetchedCategories}
+              showStatic={staticCategoriesShown}
+            />
           </div>
           <div className="col-md-6 col-lg-6">
             <GraphSection />

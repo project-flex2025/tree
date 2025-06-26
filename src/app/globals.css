@@ -423,6 +423,13 @@ foreignObject div.drugs_main {
 /* Search Wrapper */
 .search-wrapper {
   position: relative;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+
+.search-wrapper input {
+  width: 100%;
 }
 
 /* Search Icon Inside Input */

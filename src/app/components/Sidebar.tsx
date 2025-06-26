@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 
 const dummyCategories = [
@@ -18,11 +19,15 @@ const dummyCategories = [
   },
 ];
 
-const SidebarMenu = () => {
+const SidebarMenu = ({
+  categories,
+  showStatic,
+}: {
+  categories: string[];
+  showStatic: boolean;
+}) => {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>(
-    []
-  );
+  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
 
   const toggleCategory = (id: string) => {
     setExpanded((prev) => (prev === id ? null : id));
@@ -38,60 +43,80 @@ const SidebarMenu = () => {
 
   const isMainCategorySelected = (catId: string) => {
     const cat = dummyCategories.find((c) => c.id === catId);
-    return cat?.subcategories.some((sub) =>
-      selectedSubcategories.includes(sub)
-    );
+    return cat?.subcategories.some((sub) => selectedSubcategories.includes(sub));
   };
 
   return (
     <div className="sidebar-menu">
-      <ul className="list-group">
-        {dummyCategories.map((cat) => {
-          const isActive = isMainCategorySelected(cat.id);
-          return (
-            <div key={cat.id}>
-              <li className={`list-group-item ${isActive ? "active" : ""}`}>
-                <div
-                  className="fw-bold d-flex align-items-center gap-2"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => toggleCategory(cat.id)}
-                >
-                  <label className="custom-radio-style mb-0 d-flex align-items-center gap-2">
-                    <input type="checkbox" checked={isActive} readOnly />
-                  </label>
-                  {cat.name}
-                  <span className="ms-auto">
-                    <i
-                      className={`fa fa-chevron-${
-                        expanded === cat.id ? "up" : "down"
-                      }`}
-                    ></i>
-                  </span>
-                </div>
-              </li>
+      <h6 className="fw-bold mb-2">
+        {showStatic ? "Static Categories" : "Filtered Categories"}
+      </h6>
 
-              {expanded === cat.id && (
-                <ul className="list-group mt-2">
-                  {cat.subcategories.map((sub, idx) => (
-                    <li
-                      key={idx}
-                      className="list-group-item list-group-item-light d-flex align-items-center gap-2"
-                    >
-                      <label className="custom-radio-style mb-0 d-flex align-items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedSubcategories.includes(sub)}
-                          onChange={() => handleCheckboxChange(sub)}
-                        />
-                        <span>{sub}</span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          );
-        })}
+      <ul className="list-group">
+        {showStatic ? (
+          dummyCategories.map((cat) => {
+            const isActive = isMainCategorySelected(cat.id);
+            return (
+              <div key={cat.id}>
+                <li className={`list-group-item ${isActive ? "active" : ""}`}>
+                  <div
+                    className="fw-bold d-flex align-items-center gap-2"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleCategory(cat.id)}
+                  >
+                    <label className="custom-radio-style mb-0 d-flex align-items-center gap-2">
+                      <input type="checkbox" checked={isActive} readOnly />
+                    </label>
+                    {cat.name}
+                    <span className="ms-auto">
+                      <i
+                        className={`fa fa-chevron-${
+                          expanded === cat.id ? "up" : "down"
+                        }`}
+                      ></i>
+                    </span>
+                  </div>
+                </li>
+
+                {expanded === cat.id && (
+                  <ul className="list-group mt-2">
+                    {cat.subcategories.map((sub, idx) => (
+                      <li
+                        key={idx}
+                        className="list-group-item list-group-item-light d-flex align-items-center gap-2"
+                      >
+                        <label className="custom-radio-style mb-0 d-flex align-items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedSubcategories.includes(sub)}
+                            onChange={() => handleCheckboxChange(sub)}
+                          />
+                          <span>{sub}</span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })
+        ) : (
+          categories.map((cat, idx) => (
+            <li
+              key={idx}
+              className="list-group-item list-group-item-light d-flex align-items-center gap-2"
+            >
+              <label className="custom-radio-style mb-0 d-flex align-items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={selectedSubcategories.includes(cat)}
+                  onChange={() => handleCheckboxChange(cat)}
+                />
+                <span>{cat}</span>
+              </label>
+            </li>
+          ))
+        )}
       </ul>
     </div>
   );
