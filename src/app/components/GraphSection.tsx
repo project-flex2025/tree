@@ -70,20 +70,50 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
   // Add effect to update node visibility when visibleCategories changes
   useEffect(() => {
     if (!graphDataRef.current || !graphDataRef.current.nodes) return;
-    // Set node.visible based on visibleCategories
     graphDataRef.current.nodes.forEach((node: any) => {
       if (node.nodeType === 'main' || node.nodeType === 'sub') {
         node.visible = visibleCategories.includes(node.keyword);
       } else {
-        node.visible = true; // always show center node
+        node.visible = true;
       }
     });
-    // Update the graph rendering
     if (typeof window !== 'undefined' && gRef.current) {
-      // updateGraph is defined inside initializeGraph, so we need to re-initialize
-      initializeGraph();
+      updateGraph();
     }
   }, [visibleCategories]);
+
+  function updateGraph() {
+    if (!gRef.current) return;
+    const checkedNodes = new Set();
+    d3.selectAll(".kcb").each(function () {
+      const cb = d3.select(this);
+      if (cb.property("checked")) {
+        checkedNodes.add(cb.attr("data-id"));
+      }
+    });
+    const isAnyChecked = checkedNodes.size > 0;
+    gRef.current.selectAll(".link")
+      .style("display", (d: any) => d.source.visible && d.target.visible ? "block" : "none")
+      .style("opacity", (d: any) => {
+        if (isAnyChecked) {
+          const isConnectedToHighlighted = checkedNodes.has(d.source.id) && checkedNodes.has(d.target.id);
+          return isConnectedToHighlighted ? 1 : 0.1;
+        } else {
+          return 1;
+        }
+      });
+    gRef.current.selectAll(".link-label")
+      .style("display", (d: any) => d.source.visible && d.target.visible ? "block" : "none");
+    gRef.current.selectAll(".node")
+      .style("display", (d: any) => (d.visible ? "block" : "none"))
+      .style("opacity", (d: any) => {
+        if (isAnyChecked) {
+          return checkedNodes.has(d.id) ? 1 : 0.4;
+        } else {
+          return 1;
+        }
+      });
+  }
 
   const fetchAndRender = async (keyword: string) => {
     try {
@@ -129,9 +159,9 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
   const initializeGraph = () => {
     if (!svgRef.current || !graphDataRef.current || !containerRef.current) return;
 
-    // Deep-clone nodes and links to avoid D3 mutation issues
-    const nodes = graphDataRef.current.nodes.map((n: any) => ({ ...n }));
-    const links = graphDataRef.current.links ? graphDataRef.current.links.map((l: any) => ({ ...l })) : [];
+    // Use the original node/link objects for D3 data binding
+    const nodes = graphDataRef.current.nodes;
+    const links = graphDataRef.current.links || [];
 
     const container = containerRef.current;
     const width = container.clientWidth;
@@ -364,56 +394,6 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
             .attr("y2", coords[i + 1]![1]);
         }
       }
-    }
-
-    function updateGraph() {
-      const checkedNodes = new Set();
-      d3.selectAll(".kcb").each(function () {
-        const cb = d3.select(this);
-        if (cb.property("checked")) {
-          checkedNodes.add(cb.attr("data-id"));
-        }
-      });
-
-      const isAnyChecked = checkedNodes.size > 0;
-
-      link
-        .style("display", (d: any) =>
-          d.source.visible && d.target.visible ? "block" : "none"
-        )
-        .classed("highlighted", (d: any) =>
-          d3
-            .select(`[data-link-id="${d.source.id}-${d.target.id}"]`)
-            .classed("highlighted")
-        )
-        .style("opacity", (d: any) => {
-          if (isAnyChecked) {
-            const isConnectedToHighlighted =
-              checkedNodes.has(d.source.id) && checkedNodes.has(d.target.id);
-            return isConnectedToHighlighted ? 1 : 0.1;
-          } else {
-            return 1;
-          }
-        });
-
-      linkLabels
-        .attr("x", (d: any) => (d.source.x + d.target.x) / 2)
-        .attr("y", (d: any) => (d.source.y + d.target.y) / 2)
-        .style("display", (d: any) =>
-          d.source.visible && d.target.visible ? "block" : "none"
-        );
-
-      node
-        .style("display", (d: any) => (d.visible ? "block" : "none"))
-        .style("opacity", (d: any) => {
-          if (isAnyChecked) {
-            return checkedNodes.has(d.id) ? 1 : 0.4;
-          } else {
-            return 1;
-          }
-        });
-
-      drawSelectedPath();
     }
 
     (window as any).toggleCategory = function (category: string) {
