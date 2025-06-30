@@ -11,6 +11,7 @@ import {
   faDownload,
   faSearchPlus,
   faSearchMinus,
+  faSlidersH,
 } from "@fortawesome/free-solid-svg-icons";
 
 import "@fortawesome/fontawesome-svg-core/styles.css";
@@ -19,82 +20,95 @@ import "bootstrap/dist/css/bootstrap.min.css";
 interface GraphNode {
   id: string;
   category: string;
+  nodeType?: string;
+  keyword?: string;
   [key: string]: any;
 }
 
-// const categories = ["diseases", "proteins", "genes", "chemicals", "drugs"];
+interface GraphSectionProps {
+  selectedKeyword?: string;
+}
 
-const GraphSection = () => {
+const GraphSection = ({ selectedKeyword }: GraphSectionProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const graphData = useRef<any>(null);
   const zoomRef = useRef<any>(null);
   const gRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleCategories, setVisibleCategories] = useState<string[]>([]);
-  const toggleRef = useRef<HTMLButtonElement>(null);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [dropdownDirection, setDropdownDirection] = useState<"up" | "down">(
-    "down"
-  );
+  const [showCategories, setShowCategories] = useState(false);
   const [dynamicCategories, setDynamicCategories] = useState<string[]>([]);
+  const [nodeDisplayLimit, setNodeDisplayLimit] = useState(50);
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [selectedSubNodeOrder, setSelectedSubNodeOrder] = useState<string[]>([]);
 
-  const [minYear, setMinYear] = useState(2020);
-  const [maxYear, setMaxYear] = useState(2025);
-  const [nodesCount, setNodesCount] = useState(680);
-
-  const handleDecreaseMin = () => setMinYear((prev) => prev - 1);
-  const handleIncreaseMin = () => setMinYear((prev) => prev + 1);
-
-  const handleDecreaseMax = () => setMaxYear((prev) => prev - 1);
-  const handleIncreaseMax = () => setMaxYear((prev) => prev + 1);
-
-  const handleIncreaseNode = () => setNodesCount((prev) => prev + 1);
-  const handleDecreaseNode = () => setNodesCount((prev) => prev - 1);
+  const nodeMinLimit = 10;
+  const nodeMaxLimit = 200;
 
   useEffect(() => {
-    const loadData = async () => {
-      const response = await fetch("/api/graph-data");
-      const data = await response.json();
-      graphData.current = data;
+    if (!selectedKeyword) {
+      setSearchKeyword('');
+      fetchAndRender('');
+    } else {
+      setSearchKeyword(selectedKeyword);
+      fetchAndRender(selectedKeyword);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKeyword, nodeDisplayLimit]);
 
+  const fetchAndRender = async (keyword: string) => {
+    try {
+      const safeKeyword = keyword || '';
+      const url = `https://api.publications.ai/dataset/?keyword=${encodeURIComponent(safeKeyword)}&nodes=${nodeDisplayLimit}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      console.log('Graph data:', data); // Debug log
+      graphData.current = data;
       const uniqueCategories = Array.from(
         new Set((data.nodes as GraphNode[]).map((node) => node.category))
       );
       setDynamicCategories(uniqueCategories);
 
+      // Find the center node's keyword and set as currentKeyword if no search keyword
+      if (!selectedKeyword && data.nodes) {
+        const centerNode = data.nodes.find((node: any) => node.nodeType === 'center');
+        if (centerNode && centerNode.keyword) {
+          setSearchKeyword(centerNode.keyword);
+        }
+      }
+
+      // Only initialize graph if nodes are present
+      if (!data.nodes || data.nodes.length === 0) {
+        if (svgRef.current) svgRef.current.innerHTML = '';
+        return;
+      }
+
       initializeGraph();
-    };
-
-    loadData();
-
-    return () => {
-      if (svgRef.current) svgRef.current.innerHTML = "";
-    };
-  }, []);
-
-  const handleDropdownToggle = () => {
-    if (toggleRef.current) {
-      const rect = toggleRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const dropdownHeight = 200;
-      setDropdownDirection(spaceBelow < dropdownHeight ? "up" : "down");
+    } catch (error) {
+      // Optionally, handle error or show a message
+      if (svgRef.current) svgRef.current.innerHTML = '';
     }
-    setShowDropdown((prev) => !prev);
+  };
+
+  const handleNodeCountChange = (newCount: number) => {
+    const validCount = Math.max(nodeMinLimit, Math.min(nodeMaxLimit, newCount));
+    const roundedCount = Math.round(validCount / 10) * 10;
+    setNodeDisplayLimit(roundedCount);
+    // Removed fetchAndRender call here; useEffect will handle fetching
   };
 
   const initializeGraph = () => {
     if (!svgRef.current || !graphData.current || !containerRef.current) return;
+
+    // Deep-clone nodes and links to avoid D3 mutation issues
+    const nodes = graphData.current.nodes.map((n: any) => ({ ...n }));
+    const links = graphData.current.links ? graphData.current.links.map((l: any) => ({ ...l })) : [];
 
     const container = containerRef.current;
     const width = container.clientWidth;
     const height = container.clientHeight;
 
     if (width === 0 || height === 0) return;
-
-    //  const svg = d3
-    //    .select(svgRef.current)
-    //    .attr("width", width)
-    //    .attr("height", height);
 
     const svg = d3
       .select(svgRef.current)
@@ -105,10 +119,8 @@ const GraphSection = () => {
 
     svg.selectAll("*").remove();
 
-    // Create a group for all zoomable elements
     gRef.current = svg.append("g");
 
-    // Set up zoom behavior
     zoomRef.current = d3
       .zoom()
       .scaleExtent([0.2, 4])
@@ -117,36 +129,27 @@ const GraphSection = () => {
       });
 
     const defaultTransform = d3.zoomIdentity
-      .translate(114.95293075308115, 110.566066263289)
-      .scale(0.6504939210424966);
+      .translate(33.492426043989326, 62.53974041077123)
+      .scale(0.7231243008603);
 
-    // Call zoom behavior
     svg.call(zoomRef.current);
-
-    // Apply the default zoom and transform
     svg.call(zoomRef.current.transform, defaultTransform);
 
-    // Filter out links where source or target node is missing from nodes list
-    const nodeIds = new Set(
-      graphData.current.nodes.map((node: any) => node.id)
-    );
-    graphData.current.links = graphData.current.links.filter((link: any) => {
-      // source and target could be string IDs or objects (depending on how data is parsed)
-      const sourceId =
-        typeof link.source === "string" ? link.source : link.source?.id;
-      const targetId =
-        typeof link.target === "string" ? link.target : link.target?.id;
+    const nodeIds = new Set(nodes.map((node: any) => node.id));
+    const filteredLinks = links.filter((link: any) => {
+      const sourceId = typeof link.source === "string" ? link.source : link.source?.id;
+      const targetId = typeof link.target === "string" ? link.target : link.target?.id;
       return nodeIds.has(sourceId) && nodeIds.has(targetId);
     });
 
     const simulation = d3
-      .forceSimulation(graphData.current.nodes)
+      .forceSimulation(nodes)
       .force(
         "link",
         d3
-          .forceLink(graphData.current.links)
+          .forceLink(filteredLinks)
           .id((d: any) => d.id)
-          .distance((d: any) => d.distance + 100)
+          .distance((d: any) => d.distance ? d.distance + 150 : 200)
       )
       .force("charge", d3.forceManyBody().strength(-300))
       .force("center", d3.forceCenter(width / 2, height / 2));
@@ -155,13 +158,13 @@ const GraphSection = () => {
       .append("g")
       .attr("class", "links")
       .selectAll("line")
-      .data(graphData.current.links)
+      .data(filteredLinks)
       .enter()
       .append("line")
       .attr("class", "link")
-      .attr("data-link-id", (d: any) => `${d.source.id}-${d.target.id}`)
-      .style("stroke", (d: any) => `rgba(0, 0, 0, ${d.value / 100})`)
-      .style("stroke-width", (d: any) => d.thickness)
+      .attr("data-link-id", (d: any) => `${typeof d.source === 'object' ? d.source.id : d.source}-${typeof d.target === 'object' ? d.target.id : d.target}`)
+      .style("stroke", (d: any) => `rgba(0,0,0,${d.opacity || 0.3})`)
+      .style("stroke-width", (d: any) => d.thickness || 1)
       .on("mouseover", function (event: any, d: any) {
         const checkedNodes = new Set<string>();
         d3.selectAll<HTMLInputElement, unknown>(".kcb").each(function () {
@@ -202,19 +205,19 @@ const GraphSection = () => {
       .append("g")
       .attr("class", "link-labels")
       .selectAll("text")
-      .data(graphData.current.links)
+      .data(filteredLinks)
       .enter()
       .append("text")
       .attr("class", "link-label")
       .attr("text-anchor", "middle")
       .attr("dy", -5)
-      .text((d: any) => d.linkText);
+      .text((d: any) => d.linkText || "");
 
     const node = gRef.current
       .append("g")
       .attr("class", "nodes")
       .selectAll("g")
-      .data(graphData.current.nodes)
+      .data(nodes)
       .enter()
       .append("g")
       .attr("class", "node")
@@ -232,79 +235,107 @@ const GraphSection = () => {
         updateGraph();
       });
 
-    node
-      .append("circle")
-      .attr("r", (d: any) => d.nodeIconSize)
-      .style("fill", (d: any) => d.nodeColor);
+    // Create different node types based on nodeType
+    node.each(function(this: SVGGElement, d: any) {
+      const g = d3.select(this);
+      if (d.nodeType === "center" || d.nodeType === "main") {
+        const label = d.keyword || '';
+        const charWidth = d.nodeType === "center" ? 17 : 13;
+        const iconSpace = d.nodeType === "center" ? 40 : 34;
+        const minWidth = d.nodeType === "center" ? 180 : 108;
+        const maxWidth = 370;
+        const buttonWidth = Math.max(minWidth, Math.min(maxWidth, label.length * charWidth + iconSpace + 30));
+        const buttonHeight = d.nodeType === "center" ? 62 : 40;
 
-    node.append("title").text((d: any) => d.keyword);
+        g.append("foreignObject")
+          .attr("x", -buttonWidth / 2 - 1)
+          .attr("y", -buttonHeight / 2 - 1)
+          .attr("width", buttonWidth + 2)
+          .attr("height", buttonHeight + 2)
+          .append("xhtml:button")
+          .attr("class", d.nodeType === "center" ? "center-keyword-button" : "main-node-button")
+          .style("width", buttonWidth + "px")
+          .style("height", buttonHeight + "px")
+          .style("color", "#fff")
+          .style("background", d.nodeColor || "#1976d2")
+          .style("padding", d.nodeType === "center" ? "0.25em 1.25em 0.25em 1em" : "0.18em 1em 0.18em 0.9em")
+          .style("gap", "0.38em")
+          .html(
+            `<i class="${d.icon || 'fa fa-circle'}" style="color:${d.iconColor || '#fff'};margin-right:0.38em"></i> <span>${label}</span>`
+          );
+      } else {
+        g.append("circle")
+          .attr("r", d.nodeIconSize || 8)
+          .style("fill", d.nodeColor || "#1976d2");
 
-    node
-      .append("foreignObject")
-      .attr("x", (d: any) => -d.nodeIconSize)
-      .attr("y", (d: any) => -d.nodeIconSize)
-      .attr("width", (d: any) => d.nodeIconSize * 2)
-      .attr("height", (d: any) => d.nodeIconSize * 2)
-      .attr("class", (d: any) => d.id + "_foreignObject1")
-      .append("xhtml:div")
-      .attr("class", "icon-container")
-      .html(
-        (d: any) =>
-          `<i class="${d.icon}" style="color:${d.iconColor};font-size:${d.nodeIconSize}px;"></i>`
-      );
+        g.append("foreignObject")
+          .attr("x", -d.nodeIconSize)
+          .attr("y", -d.nodeIconSize)
+          .attr("width", d.nodeIconSize * 2)
+          .attr("height", d.nodeIconSize * 2)
+          .attr("class", d.id + "_foreignObject1")
+          .append("xhtml:div")
+          .attr("class", "icon-container")
+          .html(
+            `<i class="${d.icon || 'fa fa-circle'}" style="color:${d.iconColor || '#fff'};font-size:${d.nodeIconSize}px;"></i>`
+          );
 
-    node
-      .append("foreignObject")
-      .attr("x", (d: any) => d.nodeIconSize + 5)
-      .attr("y", -23)
-      .attr("width", 150)
-      .attr("height", 60)
-      .attr("class", (d: any) => d.id + "_foreignObject2 ")
-      .append("xhtml:div")
-      .attr(
-        "class",
-        (d: any) => "checkbox-container " + d.category + "_" + d.nodeType
-      )
-      .html(
-        (d: any) => `
-       <input type="checkbox" class="kcb" data-id="${d.id}" onchange="handleCheckboxChange('${d.id}', '${d.keyword}', this.checked)">
-       <span class="${d.textClass}">${d.keyword}</span>
-     `
-      );
+        g.append("foreignObject")
+          .attr("x", d.nodeIconSize + 1)
+          .attr("y", -23)
+          .attr("width", 150)
+          .attr("height", 60)
+          .attr("class", d.id + "_foreignObject2")
+          .append("xhtml:div")
+          .attr("class", "checkbox-container " + d.category + "_" + d.nodeType)
+          .html(
+            `<input type="checkbox" class="kcb" data-id="${d.id}" onchange="handleCheckboxChange('${d.id}', '${d.keyword}', this.checked)">
+             <span class="${d.textClass || 'medium-text'}">${d.keyword}</span>`
+          );
+      }
+    });
 
     (window as any).handleCheckboxChange = function (
       nodeId: string,
       keyword: string,
       checked: boolean
     ) {
-      if (nodeId.endsWith("_main")) {
-        graphData.current.nodes.forEach((node: any) => {
-          if (node.category === keyword.toLowerCase()) {
-            const checkbox = document.querySelector(
-              `.${node.id}_foreignObject2 .kcb`
-            ) as HTMLInputElement;
-            if (checkbox) {
-              checkbox.checked = checked;
-            }
+      const nodeObj = graphData.current.nodes.find((n: any) => n.id === nodeId);
+      if (nodeObj && nodeObj.nodeType === "sub") {
+        if (checked) {
+          if (!selectedSubNodeOrder.includes(nodeId)) {
+            setSelectedSubNodeOrder(prev => [...prev, nodeId]);
           }
-        });
-
-        graphData.current.links.forEach((link: any) => {
-          if (link.source.id === nodeId || link.target.id === nodeId) {
-            if (checked) {
-              d3.select(
-                `[data-link-id="${link.source.id}-${link.target.id}"]`
-              ).classed("highlighted", true);
-            } else {
-              d3.select(
-                `[data-link-id="${link.source.id}-${link.target.id}"]`
-              ).classed("highlighted", false);
-            }
-          }
-        });
+        } else {
+          setSelectedSubNodeOrder(prev => prev.filter(id => id !== nodeId));
+        }
+        drawSelectedPath();
       }
       updateGraph();
     };
+
+    function drawSelectedPath() {
+      if (!gRef.current) return;
+      
+      gRef.current.selectAll(".selected-path-line").remove();
+      if (selectedSubNodeOrder.length > 1) {
+        const coords = selectedSubNodeOrder
+          .map(id => {
+            const n = graphData.current.nodes.find((node: any) => node.id === id);
+            return n && n.x !== undefined && n.y !== undefined ? [n.x, n.y] : null;
+          })
+          .filter(d => d);
+        
+        for (let i = 0; i < coords.length - 1; ++i) {
+          gRef.current.append("line")
+            .attr("class", "selected-path-line")
+            .attr("x1", coords[i]![0])
+            .attr("y1", coords[i]![1])
+            .attr("x2", coords[i + 1]![0])
+            .attr("y2", coords[i + 1]![1]);
+        }
+      }
+    }
 
     function updateGraph() {
       const checkedNodes = new Set();
@@ -352,6 +383,8 @@ const GraphSection = () => {
             return 1;
           }
         });
+
+      drawSelectedPath();
     }
 
     (window as any).toggleCategory = function (category: string) {
@@ -374,7 +407,9 @@ const GraphSection = () => {
       );
 
       graphData.current.nodes.forEach((node: any) => {
-        node.visible = !isActive;
+        if (node.nodeType !== "center") {
+          node.visible = !isActive;
+        }
       });
 
       updateGraph();
@@ -427,6 +462,8 @@ const GraphSection = () => {
         .attr("y", (d: any) => (d.source.y + d.target.y) / 2);
 
       node.attr("transform", (d: any) => `translate(${d.x},${d.y})`);
+      
+      drawSelectedPath();
     });
 
     function dragstarted(event: any, d: any) {
@@ -508,168 +545,85 @@ const GraphSection = () => {
   };
 
   const handleDownload = () => {
-    alert("This button is just for reference only");
+    alert("Download functionality coming soon!");
   };
 
   return (
     <div ref={containerRef} className="flex-grow-1 position-relative">
+      {/* Background Text */}
       <div className="background-text">
-        <h1>Cancer</h1>
-        <p>Some Text Here | Some Text Here | Some Text Here</p>
-      </div>
-      {/* <div className="category-select-container">
-        <div className="custom-select">
-          <button
-            ref={toggleRef}
-            className="select-toggle"
-            onClick={handleDropdownToggle}
-          >
-            Select Categories ▼
-          </button>
-          {showDropdown && (
-            <div className={`select-dropdown ${dropdownDirection}`}>
-              <button
-                className={`dropdown-button ${
-                  visibleCategories.length === dynamicCategories.length
-                    ? "applied"
-                    : ""
-                }`}
-                onClick={handleToggleAllCategories}
-              >
-                <FontAwesomeIcon
-                  icon={
-                    visibleCategories.length === dynamicCategories.length
-                      ? faEye
-                      : faEyeSlash
-                  }
-                />{" "}
-                All Categories
-              </button>
-              {dynamicCategories.map((category) => (
-                <button
-                  key={category}
-                  className={`category-button ${
-                    visibleCategories.includes(category) ? "applied" : ""
-                  }`}
-                  onClick={() => handleCategoryToggle(category)}
-                >
-                  <FontAwesomeIcon
-                    icon={
-                      visibleCategories.includes(category) ? faEye : faEyeSlash
-                    }
-                  />{" "}
-                  {category.charAt(0).toUpperCase() + category.slice(1)}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div> */}
-
-      <div className="nodes-count-section">
-        <div className="node-head">Nodes</div>
-        <div className="nodes-count">
-          <div className="node-icon me-2">
-            <i className="fa-solid fa-minus" onClick={handleDecreaseNode}></i>
-          </div>
-          <span>{nodesCount}</span>
-          <div className="node-icon ms-2">
-            <i className="fa-solid fa-plus" onClick={handleIncreaseNode}></i>
-          </div>
-        </div>
+        <h1 id="header-keyword">{searchKeyword || "Search for a keyword"}</h1>
+        <p id="header-categories">graph generated by intree.ai</p>
       </div>
 
-      {/* <div className="year-select-section">
-        <div className="years-count">
-          <div className="node-icon me-2">
-            <i className="fa-solid fa-plus"></i>
-          </div>
-          <span>2020</span>
-          <div className="node-icon ms-2">
-            <i className="fa-solid fa-minus"></i>
-          </div>
-        </div>
+      {/* Category Buttons */}
+      {/* <div id="button-container" className={`button-container ${showCategories ? 'show' : 'hide'}`}>
+        {dynamicCategories.map((category) => {
+          const isActive = graphData.current?.nodes?.some(
+            (node: any) => node.category === category && node.visible
+          );
+          return (
+            <button
+              key={category}
+              className={`category-button${isActive ? ' applied' : ''}`}
+              id={`button-${category}`}
+              onClick={() => handleCategoryToggle(category)}
+            >
+              <i className={`fa ${isActive ? 'fa-eye-slash' : 'fa-eye'}`}></i> {category}
+            </button>
+          );
+        })}
+        {(() => {
+          const allActive = graphData.current?.nodes?.every((node: any) => node.visible);
+          return (
+            <button
+              className={`category-button${allActive ? ' applied' : ''}`}
+              id="button-all-categories"
+              onClick={handleToggleAllCategories}
+            >
+              <i className={`fa ${allActive ? 'fa-eye-slash' : 'fa-eye'}`}></i> All Categories
+            </button>
+          );
+        })()}
+      </div>
+      <button
+        id="toggle-categories-btn"
+        className="settings-fab"
+        title="Show/Hide categories"
+        onClick={() => setShowCategories(!showCategories)}
+      >
+        <FontAwesomeIcon icon={faSlidersH} className="settings-fab-icon" />
+      </button> */}
 
-        <div className="years-count">
-          <div className="node-icon me-2">
-            <i className="fa-solid fa-plus"></i>
-          </div>
-          <span>2025</span>
-          <div className="node-icon ms-2">
-            <i className="fa-solid fa-minus"></i>
-          </div>
-        </div>
-      </div> */}
-
-      {/* <div className="year-select-section">
-        <div className="year-gradient-bar"></div>
-       
-        <div className="years-count me-2">
-          <div className="year-icon">
-            <i
-              className="fa-solid fa-minus fa-xs"
-              onClick={handleDecreaseMin}
-            ></i>
-          </div>
-          <span className="fw-medium">{minYear}</span>
-          <div className="year-icon">
-            <i
-              className="fa-solid fa-plus fa-xs"
-              onClick={handleIncreaseMin}
-            ></i>
-          </div>
-        </div>
-       
-        <div className="years-count ms-2">
-          <div className="year-icon">
-            <i
-              className="fa-solid fa-minus fa-xs"
-              onClick={handleDecreaseMax}
-            ></i>
-          </div>
-
-          <span className="fw-medium">{maxYear}</span>
-          <div className="year-icon">
-            <i
-              className="fa-solid fa-plus fa-xs"
-              onClick={handleIncreaseMax}
-            ></i>
-          </div>
-        </div>
-      </div> */}
-
-      <div className="year-select-section">
-        <div className="year-gradient-bar"></div>
-
-        <div className="d-flex w-100 justify-content-between">
-          {/* Min Year */}
-          <div className="years-count me-2">
-            <i
-              className="fa-solid fa-minus fa-xs year-icon"
-              onClick={handleDecreaseMin}
-            ></i>
-            <span className="fw-medium">{minYear}</span>
-            <i
-              className="fa-solid fa-plus fa-xs year-icon"
-              onClick={handleIncreaseMin}
-            ></i>
-          </div>
-
-          {/* Max Year */}
-          <div className="years-count ms-2">
-            <i
-              className="fa-solid fa-minus fa-xs year-icon"
-              onClick={handleDecreaseMax}
-            ></i>
-            <span className="fw-medium">{maxYear}</span>
-            <i
-              className="fa-solid fa-plus fa-xs year-icon"
-              onClick={handleIncreaseMax}
-            ></i>
-          </div>
-        </div>
+      {/* Node Control Panel */}
+      <div className="node-control-panel" id="nodeControlPanel">
+        <button
+          id="btnDecNode"
+          title="Show fewer nodes"
+          onClick={() => handleNodeCountChange(nodeDisplayLimit - 10)}
+        >
+          <i className="fa fa-minus"></i>
+        </button>
+        <input
+          id="nodeCountInput"
+          className="node-count-input"
+          type="number"
+          min={nodeMinLimit}
+          max={nodeMaxLimit}
+          step={10}
+          value={nodeDisplayLimit}
+          onChange={(e) => handleNodeCountChange(parseInt(e.target.value) || nodeDisplayLimit)}
+        />
+        <button
+          id="btnIncNode"
+          title="Show more nodes"
+          onClick={() => handleNodeCountChange(nodeDisplayLimit + 10)}
+        >
+          <i className="fa fa-plus"></i>
+        </button>
       </div>
 
+      {/* Control Buttons */}
       <div className="control-row">
         <button className="circle-button" onClick={handleZoomIn}>
           <FontAwesomeIcon icon={faSearchPlus} />
@@ -681,6 +635,7 @@ const GraphSection = () => {
           <FontAwesomeIcon icon={faDownload} />
         </button>
       </div>
+
       <svg ref={svgRef} className="d3-svg-section"></svg>
     </div>
   );

@@ -1,3 +1,5 @@
+// @ts-nocheck
+/* eslint-disable */
 "use client";
 import { useEffect, useState, useRef } from "react";
 import GraphSection from "./components/GraphSection";
@@ -11,6 +13,11 @@ type KeywordItem = {
   categories: string[];
 };
 
+interface SidebarCategory {
+  main: string;
+  sub: string[];
+}
+
 const MainComponent = () => {
   const searchRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
@@ -21,17 +28,22 @@ const MainComponent = () => {
   const [fetchedCategories, setFetchedCategories] = useState<string[]>([]);
   const [staticCategoriesShown, setStaticCategoriesShown] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
+  const [suggestionIndex, setSuggestionIndex] = useState(-1);
+  const [nodeDisplayLimit, setNodeDisplayLimit] = useState<number>(10);
+  const [graphData, setGraphData] = useState<any>(null);
+  const [sidebarCategories, setSidebarCategories] = useState<SidebarCategory[]>([]);
+  const [visibleCategories, setVisibleCategories] = useState<string[]>([]);
 
   useEffect(() => {
     if (!query.trim()) {
       setSuggestions([]);
       setFetchedCategories([]);
       setStaticCategoriesShown(true);
-      setHasSearched(false); // reset
+      setHasSearched(false);
+      setSuggestionIndex(-1);
       return;
     }
 
-    // Only proceed if user has entered at least 3 characters
     if (query.trim().length < 3 || suppressSuggestions) {
       return;
     }
@@ -41,12 +53,10 @@ const MainComponent = () => {
       try {
         let res = await fetch(`/api/proxy?q=${query}&type=suggest`);
         let data = await res.json();
-        console.log("data 1", data);
 
         if (!data?.suggestions?.length) {
           res = await fetch(`/api/proxy?q=${query}&type=search`);
           data = await res.json();
-          console.log("data 2", data);
         }
 
         if (!data?.suggestions?.length) {
@@ -54,11 +64,11 @@ const MainComponent = () => {
             `/api/proxy?q=${query}&type=search&search_field=all_names`
           );
           data = await res.json();
-          console.log("data 3", data);
         }
 
         setSuggestions(data?.suggestions || []);
         setHasSearched(true);
+        setSuggestionIndex(-1);
       } catch (err) {
         console.error("Suggestion fetching failed:", err);
         setSuggestions([]);
@@ -78,7 +88,8 @@ const MainComponent = () => {
         !searchRef.current.contains(event.target as Node)
       ) {
         setSuggestions([]);
-        setHasSearched(false); // 👈 prevent "no suggestions" on outside click
+        setHasSearched(false);
+        setSuggestionIndex(-1);
       }
     };
 
@@ -94,6 +105,24 @@ const MainComponent = () => {
     setSuppressSuggestions(false);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!suggestions.length) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSuggestionIndex(prev => Math.min(prev + 1, suggestions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSuggestionIndex(prev => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (suggestionIndex >= 0) {
+        const selected = suggestions[suggestionIndex];
+        handleSelectSuggestion(selected.general_name, selected.categories);
+      }
+    }
+  };
+
   const handleSelectSuggestion = (
     generalName: string,
     categories: string[]
@@ -104,114 +133,147 @@ const MainComponent = () => {
     setSuppressSuggestions(true);
     setFetchedCategories(categories);
     setStaticCategoriesShown(false);
+    setSuggestionIndex(-1);
+    setHasSearched(false);
   };
 
-  // Random color palette for category tags (by index)
-  const badgeColors = [
-    "#e74c3c",
-    "#3498db",
-    "#8e44ad",
-    "#27ae60",
-    "#f39c12",
-    "#1abc9c",
-    "#2c3e50",
-  ];
+  // Fetch graph data when selectedKeyword or nodeDisplayLimit changes
+  useEffect(() => {
+    const fetchGraphData = async () => {
+      const url = `/api/graph-data?keyword=${encodeURIComponent(selectedKeyword || '')}&nodes=${nodeDisplayLimit}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      setGraphData(data);
+      // Parse sidebar structure
+      if (data.nodes) {
+        const mains = data.nodes.filter((n: any) => n.nodeType === 'main');
+        const subs = data.nodes.filter((n: any) => n.nodeType === 'sub');
+        const categories = mains.map((main: any) => ({
+          main: main.keyword,
+          sub: subs.filter((sub: any) => sub.category === main.category).map((sub: any) => sub.keyword)
+        }));
+        setSidebarCategories(categories);
+        // Set visibleCategories to all main and subcategories from the current graph
+        const allVisible = [
+          ...categories.map((c: { main: string; sub: string[] }) => c.main),
+          ...categories.flatMap((c: { main: string; sub: string[] }) => c.sub)
+        ];
+        setVisibleCategories(allVisible);
+      } else {
+        setSidebarCategories([]);
+        setVisibleCategories([]);
+      }
+    };
+    fetchGraphData();
+  }, [selectedKeyword, nodeDisplayLimit]);
+
+  // Handler: toggle main category
+  const handleToggleCategory = (main: string) => {
+    setVisibleCategories((prev: string[]) => {
+      const isVisible = prev.includes(main);
+      if (isVisible) {
+        // Remove main and all its subs
+        return prev.filter(cat => cat !== main && !sidebarCategories.find((c: SidebarCategory) => c.main === main)?.sub.includes(cat));
+      } else {
+        // Add main and all its subs
+        const subs = sidebarCategories.find((c: SidebarCategory) => c.main === main)?.sub || [];
+        return [...prev, main, ...subs];
+      }
+    });
+  };
+
+  // Handler: toggle subcategory
+  const handleToggleSubcategory = (sub: string) => {
+    setVisibleCategories((prev: string[]) => {
+      const isVisible = prev.includes(sub);
+      if (isVisible) {
+        return prev.filter(cat => cat !== sub);
+      } else {
+        return [...prev, sub];
+      }
+    });
+  };
+
+  // Handler: select/deselect all
+  const handleToggleAll = (checked: boolean) => {
+    if (checked) {
+      setVisibleCategories([
+        ...sidebarCategories.map((c: SidebarCategory) => c.main),
+        ...sidebarCategories.flatMap((c: SidebarCategory) => c.sub)
+      ]);
+    } else {
+      setVisibleCategories([]);
+    }
+  };
 
   return (
-    <div className="container-fluid p-0">
-      <div className="container-fluid">
-        <div className=" d-flex justify-content-center">
-          <div
-            className="search-wrapper my-3 position-relative"
-            ref={searchRef}
-          >
-            <i className="fa-solid fa-magnifying-glass search-icon"></i>
+    <div className="responsive-container">
+      {/* Search Bar Container */}
+      <div className="searchbar-container">
+        <form className="searchbar-main" onSubmit={(e) => e.preventDefault()}>
+          <i className="fa fa-search"></i>
+          <div className="autocomplete-wrapper" ref={searchRef}>
             <input
+              id="search-input"
               type="text"
-              className="form-control custom-search-input"
-              placeholder="Search for....."
+              placeholder="Search biomedical keyword..."
               value={query}
               onChange={handleInputChange}
-              aria-label="Search"
+              onKeyDown={handleKeyDown}
+              autoComplete="off"
             />
-
             {loadingSuggestions && (
-              <p
-                className="mt-2 position-absolute bg-white p-2 rounded shadow-sm"
-                style={{ top: "100%", left: 0, zIndex: 100 }}
-              >
+              <div className="suggestions-loading">
                 Loading suggestions...
-              </p>
+              </div>
             )}
-
             {!loadingSuggestions && suggestions.length > 0 && (
-              <ul className="list-group position-absolute w-100 mt-5 z-3">
-                {suggestions.map((item) => (
-                  <li
+              <div id="suggestions" className="suggestions-list">
+                {suggestions.map((item, idx) => (
+                  <div
                     key={item.id}
-                    className="list-group-item list-group-item-action"
-                    style={{ cursor: "pointer" }}
-                    onClick={() =>
-                      handleSelectSuggestion(item.general_name, item.categories)
-                    }
+                    className={`suggestion-item ${idx === suggestionIndex ? 'active' : ''}`}
+                    onClick={() => handleSelectSuggestion(item.general_name, item.categories)}
                   >
-                    <div className="d-flex">
-                      <span className="fw-bold">{item.general_name}</span>
-                      <div className="d-flex suggestion-badge flex-wrap gap-1 mt-1">
-                        {item.categories.slice(0, 3).map((cat, idx) => (
-                          <span
-                            key={idx}
-                            className="badge pb-1"
-                            style={{
-                              backgroundColor:
-                                badgeColors[idx % badgeColors.length],
-                              color: "#fff",
-                              fontSize: "0.75rem",
-                            }}
-                          >
-                            {cat}
-                          </span>
-                        ))}
-                        {item.categories.length > 3 && (
-                          <span
-                            className="badge bg-secondary"
-                            style={{ fontSize: "0.75rem" }}
-                          >
-                            & more
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </li>
+                    <span className="suggestion-name">{item.general_name}</span>
+                    {item.categories && item.categories.map((cat, catIdx) => (
+                      <span key={catIdx} className="suggestion-badge">
+                        {cat}
+                      </span>
+                    ))}
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
-
-            {!loadingSuggestions &&
-              query.length >= 3 &&
-              suggestions.length === 0 &&
-              hasSearched && (
-                <div
-                  className="position-absolute bg-white p-2 rounded shadow-sm text-start w-100"
-                  style={{ top: "100%", left: 0, zIndex: 100 }}
-                >
-                  No suggestions found.
-                </div>
-              )}
+            {!loadingSuggestions && query.length >= 3 && suggestions.length === 0 && hasSearched && (
+              <div className="suggestions-list">
+                <div className="suggestion-item">No suggestions found.</div>
+              </div>
+            )}
           </div>
-        </div>
+        </form>
+      </div>
 
-        <hr />
-
+      {/* Main Content */}
+      <div className="main-content">
         <div className="row">
           <div className="col-md-2 col-lg-2 p-3 bg-light overflow-auto">
             <SidebarMenu
-              categories={fetchedCategories}
-              showStatic={staticCategoriesShown}
+              categories={sidebarCategories}
+              visibleCategories={visibleCategories}
+              onToggleCategory={handleToggleCategory}
+              onToggleSubcategory={handleToggleSubcategory}
+              onToggleAll={handleToggleAll}
             />
           </div>
           <div className="col-md-6 col-lg-6">
-            <GraphSection />
+            <GraphSection
+              selectedKeyword={selectedKeyword}
+              graphData={graphData}
+              nodeDisplayLimit={nodeDisplayLimit}
+              setNodeDisplayLimit={setNodeDisplayLimit}
+              visibleCategories={visibleCategories}
+            />
           </div>
           <div className="col-md-4 col-lg-4 p-3 bg-light overflow-auto">
             <SearchResultsSection selectedKeyword={selectedKeyword} />

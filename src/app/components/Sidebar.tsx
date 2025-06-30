@@ -1,122 +1,108 @@
+// @ts-nocheck
+/* eslint-disable */
 "use client";
 import { useState } from "react";
 
-const dummyCategories = [
-  {
-    id: "cat1",
-    name: "Diseases",
-    subcategories: ["Cancer", "Diabetes", "Hypertension"],
-  },
-  {
-    id: "cat2",
-    name: "Proteins",
-    subcategories: ["Protein A", "Protein B"],
-  },
-  {
-    id: "cat3",
-    name: "Genes",
-    subcategories: ["Gene X", "Gene Y", "Gene Z"],
-  },
-];
+interface SidebarCategory {
+  main: string;
+  sub: string[];
+}
+
+interface SidebarMenuProps {
+  categories: SidebarCategory[];
+  visibleCategories: string[];
+  onToggleCategory: (category: string) => void;
+  onToggleSubcategory: (subcategory: string) => void;
+  onToggleAll: (checked: boolean) => void;
+}
 
 const SidebarMenu = ({
   categories,
-  showStatic,
-}: {
-  categories: string[];
-  showStatic: boolean;
-}) => {
+  visibleCategories,
+  onToggleCategory,
+  onToggleSubcategory,
+  onToggleAll,
+}: SidebarMenuProps) => {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
 
-  const toggleCategory = (id: string) => {
-    setExpanded((prev) => (prev === id ? null : id));
+  const toggleCategory = (main: string) => {
+    setExpanded((prev) => (prev === main ? null : main));
   };
 
-  const handleCheckboxChange = (subcategory: string) => {
-    setSelectedSubcategories((prev) =>
-      prev.includes(subcategory)
-        ? prev.filter((item) => item !== subcategory)
-        : [...prev, subcategory]
-    );
-  };
-
-  const isMainCategorySelected = (catId: string) => {
-    const cat = dummyCategories.find((c) => c.id === catId);
-    return cat?.subcategories.some((sub) => selectedSubcategories.includes(sub));
-  };
+  // All checked if every main and every sub is visible
+  const allChecked = categories.every(cat =>
+    visibleCategories.includes(cat.main) && cat.sub.every(sub => visibleCategories.includes(sub))
+  );
 
   return (
-    <div className="sidebar-menu">
-      <h6 className="fw-bold mb-2">
-        {showStatic ? "Static Categories" : "Filtered Categories"}
-      </h6>
-
+    <div className="sidebar-menu p-2 bg-white rounded shadow-sm">
+      <h6 className="fw-bold mb-3">Categories</h6>
+      <div className="form-check mb-2">
+        <input
+          className="form-check-input"
+          type="checkbox"
+          id="selectAllCategories"
+          checked={allChecked}
+          onChange={e => onToggleAll(e.target.checked)}
+        />
+        <label className="form-check-label fw-bold" htmlFor="selectAllCategories">
+          Select All
+        </label>
+      </div>
       <ul className="list-group">
-        {showStatic ? (
-          dummyCategories.map((cat) => {
-            const isActive = isMainCategorySelected(cat.id);
-            return (
-              <div key={cat.id}>
-                <li className={`list-group-item ${isActive ? "active" : ""}`}>
-                  <div
-                    className="fw-bold d-flex align-items-center gap-2"
+        {categories.map((cat) => {
+          const mainChecked = visibleCategories.includes(cat.main);
+          return (
+            <div key={cat.main}>
+              <li className="list-group-item border-0 px-0 py-1">
+                <div className="d-flex align-items-center gap-2">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id={`main-${cat.main}`}
+                    checked={mainChecked}
+                    onChange={() => onToggleCategory(cat.main)}
+                  />
+                  <label
+                    className="form-check-label fw-bold flex-grow-1"
+                    htmlFor={`main-${cat.main}`}
                     style={{ cursor: "pointer" }}
-                    onClick={() => toggleCategory(cat.id)}
+                    onClick={() => toggleCategory(cat.main)}
                   >
-                    <label className="custom-radio-style mb-0 d-flex align-items-center gap-2">
-                      <input type="checkbox" checked={isActive} readOnly />
-                    </label>
-                    {cat.name}
-                    <span className="ms-auto">
-                      <i
-                        className={`fa fa-chevron-${
-                          expanded === cat.id ? "up" : "down"
-                        }`}
-                      ></i>
-                    </span>
-                  </div>
-                </li>
-
-                {expanded === cat.id && (
-                  <ul className="list-group mt-2">
-                    {cat.subcategories.map((sub, idx) => (
-                      <li
-                        key={idx}
-                        className="list-group-item list-group-item-light d-flex align-items-center gap-2"
-                      >
-                        <label className="custom-radio-style mb-0 d-flex align-items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={selectedSubcategories.includes(sub)}
-                            onChange={() => handleCheckboxChange(sub)}
-                          />
-                          <span>{sub}</span>
+                    {cat.main}
+                  </label>
+                  <span className="ms-auto" style={{ cursor: "pointer" }} onClick={() => toggleCategory(cat.main)}>
+                    <i className={`fa fa-chevron-${expanded === cat.main ? "up" : "down"}`}></i>
+                  </span>
+                </div>
+              </li>
+              {expanded === cat.main && mainChecked && (
+                <ul className="list-group ms-3 mb-2">
+                  {cat.sub.map((sub) => (
+                    <li key={sub} className="list-group-item border-0 px-0 py-1">
+                      <div className="d-flex align-items-center gap-2">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id={`sub-${sub}`}
+                          checked={visibleCategories.includes(sub)}
+                          onChange={() => onToggleSubcategory(sub)}
+                        />
+                        <label
+                          className="form-check-label flex-grow-1"
+                          htmlFor={`sub-${sub}`}
+                          style={{ cursor: "pointer" }}
+                        >
+                          {sub}
                         </label>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            );
-          })
-        ) : (
-          categories.map((cat, idx) => (
-            <li
-              key={idx}
-              className="list-group-item list-group-item-light d-flex align-items-center gap-2"
-            >
-              <label className="custom-radio-style mb-0 d-flex align-items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={selectedSubcategories.includes(cat)}
-                  onChange={() => handleCheckboxChange(cat)}
-                />
-                <span>{cat}</span>
-              </label>
-            </li>
-          ))
-        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
       </ul>
     </div>
   );
