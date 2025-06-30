@@ -27,34 +27,63 @@ interface GraphNode {
 
 interface GraphSectionProps {
   selectedKeyword?: string;
+  graphData?: any;
+  nodeDisplayLimit?: number;
+  setNodeDisplayLimit?: (count: number) => void;
+  visibleCategories: string[];
 }
 
-const GraphSection = ({ selectedKeyword }: GraphSectionProps) => {
+const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLimit: nodeDisplayLimitProp, setNodeDisplayLimit: setNodeDisplayLimitProp, visibleCategories }: GraphSectionProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
-  const graphData = useRef<any>(null);
   const zoomRef = useRef<any>(null);
   const gRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [visibleCategories, setVisibleCategories] = useState<string[]>([]);
   const [showCategories, setShowCategories] = useState(false);
   const [dynamicCategories, setDynamicCategories] = useState<string[]>([]);
-  const [nodeDisplayLimit, setNodeDisplayLimit] = useState(50);
+  const [localNodeDisplayLimit, setLocalNodeDisplayLimit] = useState(50);
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [selectedSubNodeOrder, setSelectedSubNodeOrder] = useState<string[]>([]);
+
+  const nodeDisplayLimit = nodeDisplayLimitProp !== undefined ? nodeDisplayLimitProp : localNodeDisplayLimit;
+  const handleSetNodeDisplayLimit = setNodeDisplayLimitProp || setLocalNodeDisplayLimit;
+
+  const graphDataRef = useRef<any>(null);
+  const graphData = graphDataProp !== undefined ? graphDataProp : graphDataRef.current;
 
   const nodeMinLimit = 10;
   const nodeMaxLimit = 200;
 
   useEffect(() => {
-    if (!selectedKeyword) {
+    if (!selectedKeyword && !graphDataProp) {
       setSearchKeyword('');
       fetchAndRender('');
-    } else {
+    } else if (selectedKeyword) {
       setSearchKeyword(selectedKeyword);
       fetchAndRender(selectedKeyword);
+    } else if (graphDataProp) {
+      graphDataRef.current = graphDataProp;
+      initializeGraph();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedKeyword, nodeDisplayLimit]);
+
+  // Add effect to update node visibility when visibleCategories changes
+  useEffect(() => {
+    if (!graphDataRef.current || !graphDataRef.current.nodes) return;
+    // Set node.visible based on visibleCategories
+    graphDataRef.current.nodes.forEach((node: any) => {
+      if (node.nodeType === 'main' || node.nodeType === 'sub') {
+        node.visible = visibleCategories.includes(node.keyword);
+      } else {
+        node.visible = true; // always show center node
+      }
+    });
+    // Update the graph rendering
+    if (typeof window !== 'undefined' && gRef.current) {
+      // updateGraph is defined inside initializeGraph, so we need to re-initialize
+      initializeGraph();
+    }
+  }, [visibleCategories]);
 
   const fetchAndRender = async (keyword: string) => {
     try {
@@ -63,7 +92,7 @@ const GraphSection = ({ selectedKeyword }: GraphSectionProps) => {
       const response = await fetch(url);
       const data = await response.json();
       console.log('Graph data:', data); // Debug log
-      graphData.current = data;
+      graphDataRef.current = data;
       const uniqueCategories = Array.from(
         new Set((data.nodes as GraphNode[]).map((node) => node.category))
       );
@@ -93,16 +122,16 @@ const GraphSection = ({ selectedKeyword }: GraphSectionProps) => {
   const handleNodeCountChange = (newCount: number) => {
     const validCount = Math.max(nodeMinLimit, Math.min(nodeMaxLimit, newCount));
     const roundedCount = Math.round(validCount / 10) * 10;
-    setNodeDisplayLimit(roundedCount);
+    handleSetNodeDisplayLimit(roundedCount);
     // Removed fetchAndRender call here; useEffect will handle fetching
   };
 
   const initializeGraph = () => {
-    if (!svgRef.current || !graphData.current || !containerRef.current) return;
+    if (!svgRef.current || !graphDataRef.current || !containerRef.current) return;
 
     // Deep-clone nodes and links to avoid D3 mutation issues
-    const nodes = graphData.current.nodes.map((n: any) => ({ ...n }));
-    const links = graphData.current.links ? graphData.current.links.map((l: any) => ({ ...l })) : [];
+    const nodes = graphDataRef.current.nodes.map((n: any) => ({ ...n }));
+    const links = graphDataRef.current.links ? graphDataRef.current.links.map((l: any) => ({ ...l })) : [];
 
     const container = containerRef.current;
     const width = container.clientWidth;
@@ -300,7 +329,7 @@ const GraphSection = ({ selectedKeyword }: GraphSectionProps) => {
       keyword: string,
       checked: boolean
     ) {
-      const nodeObj = graphData.current.nodes.find((n: any) => n.id === nodeId);
+      const nodeObj = graphDataRef.current.nodes.find((n: any) => n.id === nodeId);
       if (nodeObj && nodeObj.nodeType === "sub") {
         if (checked) {
           if (!selectedSubNodeOrder.includes(nodeId)) {
@@ -321,7 +350,7 @@ const GraphSection = ({ selectedKeyword }: GraphSectionProps) => {
       if (selectedSubNodeOrder.length > 1) {
         const coords = selectedSubNodeOrder
           .map(id => {
-            const n = graphData.current.nodes.find((node: any) => node.id === id);
+            const n = graphDataRef.current.nodes.find((node: any) => node.id === id);
             return n && n.x !== undefined && n.y !== undefined ? [n.x, n.y] : null;
           })
           .filter(d => d);
@@ -388,11 +417,11 @@ const GraphSection = ({ selectedKeyword }: GraphSectionProps) => {
     }
 
     (window as any).toggleCategory = function (category: string) {
-      const isActive = graphData.current.nodes.some(
+      const isActive = graphDataRef.current.nodes.some(
         (node: any) => node.category === category && node.visible
       );
 
-      graphData.current.nodes.forEach((node: any) => {
+      graphDataRef.current.nodes.forEach((node: any) => {
         if (node.category === category) {
           node.visible = !isActive;
         }
@@ -402,11 +431,11 @@ const GraphSection = ({ selectedKeyword }: GraphSectionProps) => {
     };
 
     (window as any).toggleAllCategories = function () {
-      const isActive = graphData.current.nodes.every(
+      const isActive = graphDataRef.current.nodes.every(
         (node: any) => node.visible
       );
 
-      graphData.current.nodes.forEach((node: any) => {
+      graphDataRef.current.nodes.forEach((node: any) => {
         if (node.nodeType !== "center") {
           node.visible = !isActive;
         }
@@ -419,7 +448,7 @@ const GraphSection = ({ selectedKeyword }: GraphSectionProps) => {
       dynamicCategories.forEach((category) => {
         const button = document.getElementById(`button-${category}`);
         if (button) {
-          const isActive = graphData.current.nodes.some(
+          const isActive = graphDataRef.current.nodes.some(
             (node: any) => node.category === category && node.visible
           );
           if (isActive) {
@@ -432,7 +461,7 @@ const GraphSection = ({ selectedKeyword }: GraphSectionProps) => {
         }
       });
 
-      const allActive = graphData.current.nodes.every(
+      const allActive = graphDataRef.current.nodes.every(
         (node: any) => node.visible
       );
       const allCategoriesButton = document.getElementById(
@@ -510,28 +539,6 @@ const GraphSection = ({ selectedKeyword }: GraphSectionProps) => {
     };
   };
 
-  const handleCategoryToggle = (category: string) => {
-    if (typeof window !== "undefined" && (window as any).toggleCategory) {
-      (window as any).toggleCategory(category);
-    }
-    setVisibleCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category)
-        : [...prev, category]
-    );
-  };
-
-  const handleToggleAllCategories = () => {
-    if (typeof window !== "undefined" && (window as any).toggleAllCategories) {
-      (window as any).toggleAllCategories();
-    }
-    if (visibleCategories.length === dynamicCategories.length) {
-      setVisibleCategories([]);
-    } else {
-      setVisibleCategories([...dynamicCategories]);
-    }
-  };
-
   const handleZoomIn = () => {
     if (typeof window !== "undefined" && (window as any).zoomIn) {
       (window as any).zoomIn();
@@ -559,7 +566,7 @@ const GraphSection = ({ selectedKeyword }: GraphSectionProps) => {
       {/* Category Buttons */}
       {/* <div id="button-container" className={`button-container ${showCategories ? 'show' : 'hide'}`}>
         {dynamicCategories.map((category) => {
-          const isActive = graphData.current?.nodes?.some(
+          const isActive = graphDataRef.current?.nodes?.some(
             (node: any) => node.category === category && node.visible
           );
           return (
@@ -574,7 +581,7 @@ const GraphSection = ({ selectedKeyword }: GraphSectionProps) => {
           );
         })}
         {(() => {
-          const allActive = graphData.current?.nodes?.every((node: any) => node.visible);
+          const allActive = graphDataRef.current?.nodes?.every((node: any) => node.visible);
           return (
             <button
               className={`category-button${allActive ? ' applied' : ''}`}

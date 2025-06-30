@@ -29,7 +29,7 @@ const MainComponent = () => {
   const [staticCategoriesShown, setStaticCategoriesShown] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
   const [suggestionIndex, setSuggestionIndex] = useState(-1);
-  const [nodeDisplayLimit, setNodeDisplayLimit] = useState<number>(10);
+  const [nodeDisplayLimit, setNodeDisplayLimit] = useState<number>(50);
   const [graphData, setGraphData] = useState<any>(null);
   const [sidebarCategories, setSidebarCategories] = useState<SidebarCategory[]>([]);
   const [visibleCategories, setVisibleCategories] = useState<string[]>([]);

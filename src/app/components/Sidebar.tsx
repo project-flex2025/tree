@@ -35,7 +35,7 @@ const SidebarMenu = ({
   );
 
   return (
-    <div className="sidebar-menu p-2 bg-white rounded shadow-sm">
+    <div className="sidebar-menu p-2 bg-white rounded shadow-sm" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
       <h6 className="fw-bold mb-3">Categories</h6>
       <div className="form-check mb-2">
         <input
