@@ -6,10 +6,19 @@ export async function GET(request: Request) {
     const keyword = searchParams.get('keyword') || '';
     const nodes = searchParams.get('nodes') || '50';
     const nodeCount = parseInt(nodes);
-
+    // Handle year range
+    const currentYear = new Date().getFullYear();
+    const minYear = parseInt(searchParams.get('minYear') || `${currentYear}`);
+    const maxYear = parseInt(searchParams.get('maxYear') || `${currentYear}`);
+    let yearsParam = `${currentYear}`;
+    if (!isNaN(minYear) && !isNaN(maxYear) && minYear <= maxYear) {
+      const yearsArray = [];
+      for (let y = minYear; y <= maxYear; y++) yearsArray.push(y);
+      yearsParam = yearsArray.join(',');
+    }
     // Always fetch from external API
     const externalResponse = await fetch(
-      `https://api.publications.ai/dataset/?keyword=${encodeURIComponent(keyword)}&nodes=${nodeCount}`,
+      `https://api.publications.ai/dataset/?keyword=${encodeURIComponent(keyword)}&nodes=${nodeCount}&years=${yearsParam}`,
       {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'

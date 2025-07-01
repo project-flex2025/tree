@@ -18,6 +18,9 @@ interface SidebarCategory {
   sub: string[];
 }
 
+// Centralized API URL for graph data
+const GRAPH_DATA_API_URL = '/api/graph-data';
+
 const MainComponent = () => {
   const searchRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
@@ -33,6 +36,12 @@ const MainComponent = () => {
   const [graphData, setGraphData] = useState<any>(null);
   const [sidebarCategories, setSidebarCategories] = useState<SidebarCategory[]>([]);
   const [visibleCategories, setVisibleCategories] = useState<string[]>([]);
+  const currentYear = new Date().getFullYear();
+  const [minYear, setMinYear] = useState(currentYear - 2);
+  const [maxYear, setMaxYear] = useState(currentYear);
+
+
+  console.log("sidebar catg",sidebarCategories);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -140,12 +149,21 @@ const MainComponent = () => {
   // Fetch graph data when selectedKeyword or nodeDisplayLimit changes
   useEffect(() => {
     const fetchGraphData = async () => {
-      const url = `/api/graph-data?keyword=${encodeURIComponent(selectedKeyword || '')}&nodes=${nodeDisplayLimit}`;
+      setSidebarCategories([]);
+      setVisibleCategories([]);
+      // Build years param for external API
+      let yearsParam = `${minYear}`;
+      if (minYear !== maxYear) {
+        const yearsArray = [];
+        for (let y = minYear; y <= maxYear; y++) yearsArray.push(y);
+        yearsParam = yearsArray.join(',');
+      }
+      const url = `https://api.publications.ai/dataset/?keyword=${encodeURIComponent(selectedKeyword || '')}&nodes=${nodeDisplayLimit}&years=${yearsParam}`;
       const res = await fetch(url);
       const data = await res.json();
       setGraphData(data);
-      // Parse sidebar structure
-      if (data.nodes) {
+      // Parse sidebar structure from API response
+      if (data.nodes && data.nodes.length > 0) {
         const mains = data.nodes.filter((n: any) => n.nodeType === 'main');
         const subs = data.nodes.filter((n: any) => n.nodeType === 'sub');
         const categories = mains.map((main: any) => ({
@@ -153,10 +171,9 @@ const MainComponent = () => {
           sub: subs.filter((sub: any) => sub.category === main.category).map((sub: any) => sub.keyword)
         }));
         setSidebarCategories(categories);
-        // Set visibleCategories to all main and subcategories from the current graph
         const allVisible = [
-          ...categories.map((c: { main: string; sub: string[] }) => c.main),
-          ...categories.flatMap((c: { main: string; sub: string[] }) => c.sub)
+          ...mains.map((m: any) => m.keyword),
+          ...subs.map((s: any) => s.keyword)
         ];
         setVisibleCategories(allVisible);
       } else {
@@ -165,7 +182,15 @@ const MainComponent = () => {
       }
     };
     fetchGraphData();
-  }, [selectedKeyword, nodeDisplayLimit]);
+  }, [selectedKeyword, nodeDisplayLimit, minYear, maxYear]);
+
+  // Always clear sidebar and visibleCategories if graphData is empty
+  useEffect(() => {
+    if (!graphData || !graphData.nodes || graphData.nodes.length === 0) {
+      setSidebarCategories([]);
+      setVisibleCategories([]);
+    }
+  }, [graphData]);
 
   // Handler: toggle main category
   const handleToggleCategory = (main: string) => {
@@ -273,6 +298,10 @@ const MainComponent = () => {
               nodeDisplayLimit={nodeDisplayLimit}
               setNodeDisplayLimit={setNodeDisplayLimit}
               visibleCategories={visibleCategories}
+              minYear={minYear}
+              maxYear={maxYear}
+              setMinYear={setMinYear}
+              setMaxYear={setMaxYear}
             />
           </div>
           <div className="col-md-4 col-lg-4 p-3 bg-light overflow-auto">

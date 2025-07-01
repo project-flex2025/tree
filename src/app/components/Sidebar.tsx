@@ -34,6 +34,8 @@ const SidebarMenu = ({
     visibleCategories.includes(cat.main) && cat.sub.every(sub => visibleCategories.includes(sub))
   );
 
+  console.log("categories from sidebar",categories)
+
   return (
     <div className="sidebar-menu p-2 bg-white rounded shadow-sm" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
       <h6 className="fw-bold mb-3">Categories</h6>

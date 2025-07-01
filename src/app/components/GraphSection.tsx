@@ -27,13 +27,17 @@ interface GraphNode {
 
 interface GraphSectionProps {
   selectedKeyword?: string;
-  graphData?: any;
+  graphData: any;
   nodeDisplayLimit?: number;
   setNodeDisplayLimit?: (count: number) => void;
   visibleCategories: string[];
+  minYear: number;
+  maxYear: number;
+  setMinYear: (y: number) => void;
+  setMaxYear: (y: number) => void;
 }
 
-const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLimit: nodeDisplayLimitProp, setNodeDisplayLimit: setNodeDisplayLimitProp, visibleCategories }: GraphSectionProps) => {
+const GraphSection = ({ selectedKeyword, graphData, nodeDisplayLimit: nodeDisplayLimitProp, setNodeDisplayLimit: setNodeDisplayLimitProp, visibleCategories, minYear, maxYear, setMinYear, setMaxYear }: GraphSectionProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<any>(null);
   const gRef = useRef<any>(null);
@@ -43,29 +47,30 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
   const [localNodeDisplayLimit, setLocalNodeDisplayLimit] = useState(50);
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [selectedSubNodeOrder, setSelectedSubNodeOrder] = useState<string[]>([]);
+  const currentYear = new Date().getFullYear();
 
   const nodeDisplayLimit = nodeDisplayLimitProp !== undefined ? nodeDisplayLimitProp : localNodeDisplayLimit;
   const handleSetNodeDisplayLimit = setNodeDisplayLimitProp || setLocalNodeDisplayLimit;
 
   const graphDataRef = useRef<any>(null);
-  const graphData = graphDataProp !== undefined ? graphDataProp : graphDataRef.current;
-
-  const nodeMinLimit = 10;
-  const nodeMaxLimit = 200;
-
+  // Use the prop as the only data source
   useEffect(() => {
-    if (!selectedKeyword && !graphDataProp) {
-      setSearchKeyword('');
-      fetchAndRender('');
-    } else if (selectedKeyword) {
-      setSearchKeyword(selectedKeyword);
-      fetchAndRender(selectedKeyword);
-    } else if (graphDataProp) {
-      graphDataRef.current = graphDataProp;
+    graphDataRef.current = graphData;
+    if (graphData && graphData.nodes && graphData.nodes.length > 0) {
       initializeGraph();
+      // Optionally set searchKeyword from center node
+      const centerNode = graphData.nodes.find((node: any) => node.nodeType === 'center');
+      if (centerNode && centerNode.keyword) {
+        setSearchKeyword(centerNode.keyword);
+      }
+      // Set dynamic categories for UI if needed
+      setDynamicCategories(Array.from(new Set(graphData.nodes.map((node: any) => node.category))));
+    } else {
+      if (svgRef.current) svgRef.current.innerHTML = '';
+      setSearchKeyword('');
+      setDynamicCategories([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedKeyword, nodeDisplayLimit]);
+  }, [graphData, nodeDisplayLimit, visibleCategories]);
 
   // Add effect to update node visibility when visibleCategories changes
   useEffect(() => {
@@ -115,45 +120,10 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
       });
   }
 
-  const fetchAndRender = async (keyword: string) => {
-    try {
-      const safeKeyword = keyword || '';
-      const url = `https://api.publications.ai/dataset/?keyword=${encodeURIComponent(safeKeyword)}&nodes=${nodeDisplayLimit}`;
-      const response = await fetch(url);
-      const data = await response.json();
-      console.log('Graph data:', data); // Debug log
-      graphDataRef.current = data;
-      const uniqueCategories = Array.from(
-        new Set((data.nodes as GraphNode[]).map((node) => node.category))
-      );
-      setDynamicCategories(uniqueCategories);
-
-      // Find the center node's keyword and set as currentKeyword if no search keyword
-      if (!selectedKeyword && data.nodes) {
-        const centerNode = data.nodes.find((node: any) => node.nodeType === 'center');
-        if (centerNode && centerNode.keyword) {
-          setSearchKeyword(centerNode.keyword);
-        }
-      }
-
-      // Only initialize graph if nodes are present
-      if (!data.nodes || data.nodes.length === 0) {
-        if (svgRef.current) svgRef.current.innerHTML = '';
-        return;
-      }
-
-      initializeGraph();
-    } catch (error) {
-      // Optionally, handle error or show a message
-      if (svgRef.current) svgRef.current.innerHTML = '';
-    }
-  };
-
   const handleNodeCountChange = (newCount: number) => {
-    const validCount = Math.max(nodeMinLimit, Math.min(nodeMaxLimit, newCount));
+    const validCount = Math.max(10, Math.min(200, newCount));
     const roundedCount = Math.round(validCount / 10) * 10;
     handleSetNodeDisplayLimit(roundedCount);
-    // Removed fetchAndRender call here; useEffect will handle fetching
   };
 
   const initializeGraph = () => {
@@ -162,6 +132,8 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
     // Use the original node/link objects for D3 data binding
     const nodes = graphDataRef.current.nodes;
     const links = graphDataRef.current.links || [];
+    console.log('Initializing graph with nodes:', nodes);
+    console.log('Initializing graph with links:', links);
 
     const container = containerRef.current;
     const width = container.clientWidth;
@@ -535,12 +507,44 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
     alert("Download functionality coming soon!");
   };
 
+  const handleDecreaseMin = () => {
+    setMinYear(Math.max(currentYear - 10, Math.min(minYear - 1, maxYear)));
+  };
+  const handleIncreaseMin = () => {
+    setMinYear(Math.min(minYear + 1, maxYear));
+  };
+  const handleDecreaseMax = () => {
+    setMaxYear(Math.max(minYear, maxYear - 1));
+  };
+  const handleIncreaseMax = () => {
+    setMaxYear(Math.min(maxYear + 1, currentYear));
+  };
+
   return (
     <div ref={containerRef} className="flex-grow-1 position-relative">
       {/* Background Text */}
       <div className="background-text">
         <h1 id="header-keyword">{searchKeyword || "Search for a keyword"}</h1>
         <p id="header-categories">graph generated by intree.ai</p>
+      </div>
+
+      {/* Year Range Selector */}
+      <div className="year-select-section">
+        <div className="year-gradient-bar"></div>
+        <div className="d-flex justify-content-between w-100">
+        {/* Min Year */}
+        <div className="years-count me-2">
+          <i className="fa-solid fa-minus fa-xs year-icon" onClick={handleDecreaseMin}></i>
+          <span className="fw-medium">{minYear}</span>
+          <i className="fa-solid fa-plus fa-xs year-icon" onClick={handleIncreaseMin}></i>
+        </div>
+        {/* Max Year */}
+        <div className="years-count ms-2">
+          <i className="fa-solid fa-minus fa-xs year-icon" onClick={handleDecreaseMax}></i>
+          <span className="fw-medium">{maxYear}</span>
+          <i className="fa-solid fa-plus fa-xs year-icon" onClick={handleIncreaseMax}></i>
+        </div>
+        </div>
       </div>
 
       {/* Category Buttons */}
@@ -595,8 +599,8 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
           id="nodeCountInput"
           className="node-count-input"
           type="number"
-          min={nodeMinLimit}
-          max={nodeMaxLimit}
+          min={10}
+          max={200}
           step={10}
           value={nodeDisplayLimit}
           onChange={(e) => handleNodeCountChange(parseInt(e.target.value) || nodeDisplayLimit)}
