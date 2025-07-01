@@ -1001,9 +1001,10 @@ foreignObject div.drugs_main {
   right: 20px;
   bottom: 20px;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  flex-direction: column;
+  z-index: 10;
 }
 
 .years-count {
@@ -1025,10 +1026,9 @@ foreignObject div.drugs_main {
 
 .year-gradient-bar {
   width: 150px;
-  height: 12px;
+  height: 10px;
   border-radius: 5px;
-  /* margin-right: 10px; */
-  background: linear-gradient(to right, #a7d3ff, #092c60);
+  background: linear-gradient(to right, #a7d3ff, #0057d8);
 }
 
 @media screen and (min-width: 825px) and (max-width: 1024px) {

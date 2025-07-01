@@ -153,12 +153,14 @@ const MainComponent = () => {
           sub: subs.filter((sub: any) => sub.category === main.category).map((sub: any) => sub.keyword)
         }));
         setSidebarCategories(categories);
-        // Set visibleCategories to all main and subcategories from the current graph
+        // Set visibleCategories to all main, sub, and all unique node keywords and categories from the current graph
         const allVisible = [
           ...categories.map((c: { main: string; sub: string[] }) => c.main),
-          ...categories.flatMap((c: { main: string; sub: string[] }) => c.sub)
+          ...categories.flatMap((c: { main: string; sub: string[] }) => c.sub),
+          ...Array.from(new Set(data.nodes.map((n: any) => n.keyword))),
+          ...Array.from(new Set(data.nodes.map((n: any) => n.category)))
         ];
-        setVisibleCategories(allVisible);
+        setVisibleCategories(Array.from(new Set(allVisible)));
       } else {
         setSidebarCategories([]);
         setVisibleCategories([]);

@@ -33,7 +33,13 @@ interface GraphSectionProps {
   visibleCategories: string[];
 }
 
-const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLimit: nodeDisplayLimitProp, setNodeDisplayLimit: setNodeDisplayLimitProp, visibleCategories }: GraphSectionProps) => {
+const GraphSection = ({
+  selectedKeyword,
+  graphData: graphDataProp,
+  nodeDisplayLimit: nodeDisplayLimitProp,
+  setNodeDisplayLimit: setNodeDisplayLimitProp,
+  visibleCategories,
+}: GraphSectionProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<any>(null);
   const gRef = useRef<any>(null);
@@ -41,22 +47,33 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
   const [showCategories, setShowCategories] = useState(false);
   const [dynamicCategories, setDynamicCategories] = useState<string[]>([]);
   const [localNodeDisplayLimit, setLocalNodeDisplayLimit] = useState(50);
-  const [searchKeyword, setSearchKeyword] = useState<string>('');
-  const [selectedSubNodeOrder, setSelectedSubNodeOrder] = useState<string[]>([]);
+  const [searchKeyword, setSearchKeyword] = useState<string>("");
+  const [selectedSubNodeOrder, setSelectedSubNodeOrder] = useState<string[]>(
+    []
+  );
+  const [startYear, setStartYear] = useState<number>(new Date().getFullYear() - 2);
+  const [endYear, setEndYear] = useState<number>(new Date().getFullYear());
 
-  const nodeDisplayLimit = nodeDisplayLimitProp !== undefined ? nodeDisplayLimitProp : localNodeDisplayLimit;
-  const handleSetNodeDisplayLimit = setNodeDisplayLimitProp || setLocalNodeDisplayLimit;
+
+  console.log("start year",startYear);
+  const nodeDisplayLimit =
+    nodeDisplayLimitProp !== undefined
+      ? nodeDisplayLimitProp
+      : localNodeDisplayLimit;
+  const handleSetNodeDisplayLimit =
+    setNodeDisplayLimitProp || setLocalNodeDisplayLimit;
 
   const graphDataRef = useRef<any>(null);
-  const graphData = graphDataProp !== undefined ? graphDataProp : graphDataRef.current;
+  const graphData =
+    graphDataProp !== undefined ? graphDataProp : graphDataRef.current;
 
   const nodeMinLimit = 10;
   const nodeMaxLimit = 200;
 
   useEffect(() => {
     if (!selectedKeyword && !graphDataProp) {
-      setSearchKeyword('');
-      fetchAndRender('');
+      setSearchKeyword("");
+      fetchAndRender("");
     } else if (selectedKeyword) {
       setSearchKeyword(selectedKeyword);
       fetchAndRender(selectedKeyword);
@@ -65,19 +82,40 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
       initializeGraph();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedKeyword, nodeDisplayLimit]);
+  }, [selectedKeyword, nodeDisplayLimit, startYear, endYear]);
 
   // Add effect to update node visibility when visibleCategories changes
   useEffect(() => {
     if (!graphDataRef.current || !graphDataRef.current.nodes) return;
+    
+    console.log("visibleCategories effect triggered with:", visibleCategories);
+    console.log("Total nodes in graphData:", graphDataRef.current.nodes.length);
+    
+    let visibleCount = 0;
     graphDataRef.current.nodes.forEach((node: any) => {
-      if (node.nodeType === 'main' || node.nodeType === 'sub') {
-        node.visible = visibleCategories.includes(node.keyword);
+      if (node.nodeType === "main" || node.nodeType === "sub") {
+        // If visibleCategories is empty, show all nodes
+        if (visibleCategories.length === 0) {
+          node.visible = true;
+        } else {
+          // Check if node keyword OR category is in visibleCategories
+          const isVisible = visibleCategories.includes(node.keyword) || 
+                           visibleCategories.includes(node.category);
+          node.visible = isVisible;
+          
+          if (!isVisible) {
+            console.log("Node hidden:", node.keyword, "category:", node.category);
+          }
+        }
       } else {
-        node.visible = true;
+        node.visible = true; // always show center node
       }
+      if (node.visible) visibleCount++;
     });
-    if (typeof window !== 'undefined' && gRef.current) {
+    
+    console.log("Nodes set to visible:", visibleCount);
+    
+    if (typeof window !== "undefined" && gRef.current) {
       updateGraph();
     }
   }, [visibleCategories]);
@@ -92,19 +130,27 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
       }
     });
     const isAnyChecked = checkedNodes.size > 0;
-    gRef.current.selectAll(".link")
-      .style("display", (d: any) => d.source.visible && d.target.visible ? "block" : "none")
+    gRef.current
+      .selectAll(".link")
+      .style("display", (d: any) =>
+        d.source.visible && d.target.visible ? "block" : "none"
+      )
       .style("opacity", (d: any) => {
         if (isAnyChecked) {
-          const isConnectedToHighlighted = checkedNodes.has(d.source.id) && checkedNodes.has(d.target.id);
+          const isConnectedToHighlighted =
+            checkedNodes.has(d.source.id) && checkedNodes.has(d.target.id);
           return isConnectedToHighlighted ? 1 : 0.1;
         } else {
           return 1;
         }
       });
-    gRef.current.selectAll(".link-label")
-      .style("display", (d: any) => d.source.visible && d.target.visible ? "block" : "none");
-    gRef.current.selectAll(".node")
+    gRef.current
+      .selectAll(".link-label")
+      .style("display", (d: any) =>
+        d.source.visible && d.target.visible ? "block" : "none"
+      );
+    gRef.current
+      .selectAll(".node")
       .style("display", (d: any) => (d.visible ? "block" : "none"))
       .style("opacity", (d: any) => {
         if (isAnyChecked) {
@@ -117,11 +163,30 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
 
   const fetchAndRender = async (keyword: string) => {
     try {
-      const safeKeyword = keyword || '';
-      const url = `https://api.publications.ai/dataset/?keyword=${encodeURIComponent(safeKeyword)}&nodes=${nodeDisplayLimit}`;
+      console.log("fetchAndRender called with keyword:", keyword);
+      console.log("Current startYear:", startYear, "endYear:", endYear);
+      
+      const safeKeyword = keyword || "";
+      let url = `https://api.publications.ai/dataset/?keyword=${encodeURIComponent(
+        safeKeyword
+      )}&nodes=${nodeDisplayLimit}`;
+
+      // Add years parameter if both start and end years are set
+      if (startYear && endYear && startYear <= endYear) {
+        const years = [];
+        for (let year = startYear; year <= endYear; year++) {
+          years.push(year);
+        }
+        url += `&years=${years.join(",")}`;
+        console.log("Years being added:", years);
+      } else {
+        console.log("Years NOT being added - startYear:", startYear, "endYear:", endYear);
+      }
+
+      console.log("Final URL being fetched:", url);
       const response = await fetch(url);
       const data = await response.json();
-      console.log('Graph data:', data); // Debug log
+      console.log("Graph data received, nodes count:", data?.nodes?.length || 0);
       graphDataRef.current = data;
       const uniqueCategories = Array.from(
         new Set((data.nodes as GraphNode[]).map((node) => node.category))
@@ -130,7 +195,9 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
 
       // Find the center node's keyword and set as currentKeyword if no search keyword
       if (!selectedKeyword && data.nodes) {
-        const centerNode = data.nodes.find((node: any) => node.nodeType === 'center');
+        const centerNode = data.nodes.find(
+          (node: any) => node.nodeType === "center"
+        );
         if (centerNode && centerNode.keyword) {
           setSearchKeyword(centerNode.keyword);
         }
@@ -138,14 +205,14 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
 
       // Only initialize graph if nodes are present
       if (!data.nodes || data.nodes.length === 0) {
-        if (svgRef.current) svgRef.current.innerHTML = '';
+        if (svgRef.current) svgRef.current.innerHTML = "";
         return;
       }
 
       initializeGraph();
     } catch (error) {
       // Optionally, handle error or show a message
-      if (svgRef.current) svgRef.current.innerHTML = '';
+      if (svgRef.current) svgRef.current.innerHTML = "";
     }
   };
 
@@ -157,7 +224,8 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
   };
 
   const initializeGraph = () => {
-    if (!svgRef.current || !graphDataRef.current || !containerRef.current) return;
+    if (!svgRef.current || !graphDataRef.current || !containerRef.current)
+      return;
 
     // Use the original node/link objects for D3 data binding
     const nodes = graphDataRef.current.nodes;
@@ -196,8 +264,10 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
 
     const nodeIds = new Set(nodes.map((node: any) => node.id));
     const filteredLinks = links.filter((link: any) => {
-      const sourceId = typeof link.source === "string" ? link.source : link.source?.id;
-      const targetId = typeof link.target === "string" ? link.target : link.target?.id;
+      const sourceId =
+        typeof link.source === "string" ? link.source : link.source?.id;
+      const targetId =
+        typeof link.target === "string" ? link.target : link.target?.id;
       return nodeIds.has(sourceId) && nodeIds.has(targetId);
     });
 
@@ -208,7 +278,7 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
         d3
           .forceLink(filteredLinks)
           .id((d: any) => d.id)
-          .distance((d: any) => d.distance ? d.distance + 150 : 200)
+          .distance((d: any) => (d.distance ? d.distance + 150 : 200))
       )
       .force("charge", d3.forceManyBody().strength(-300))
       .force("center", d3.forceCenter(width / 2, height / 2));
@@ -221,7 +291,13 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
       .enter()
       .append("line")
       .attr("class", "link")
-      .attr("data-link-id", (d: any) => `${typeof d.source === 'object' ? d.source.id : d.source}-${typeof d.target === 'object' ? d.target.id : d.target}`)
+      .attr(
+        "data-link-id",
+        (d: any) =>
+          `${typeof d.source === "object" ? d.source.id : d.source}-${
+            typeof d.target === "object" ? d.target.id : d.target
+          }`
+      )
       .style("stroke", (d: any) => `rgba(0,0,0,${d.opacity || 0.3})`)
       .style("stroke-width", (d: any) => d.thickness || 1)
       .on("mouseover", function (event: any, d: any) {
@@ -295,15 +371,18 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
       });
 
     // Create different node types based on nodeType
-    node.each(function(this: SVGGElement, d: any) {
+    node.each(function (this: SVGGElement, d: any) {
       const g = d3.select(this);
       if (d.nodeType === "center" || d.nodeType === "main") {
-        const label = d.keyword || '';
+        const label = d.keyword || "";
         const charWidth = d.nodeType === "center" ? 17 : 13;
         const iconSpace = d.nodeType === "center" ? 40 : 34;
         const minWidth = d.nodeType === "center" ? 180 : 108;
         const maxWidth = 370;
-        const buttonWidth = Math.max(minWidth, Math.min(maxWidth, label.length * charWidth + iconSpace + 30));
+        const buttonWidth = Math.max(
+          minWidth,
+          Math.min(maxWidth, label.length * charWidth + iconSpace + 30)
+        );
         const buttonHeight = d.nodeType === "center" ? 62 : 40;
 
         g.append("foreignObject")
@@ -312,15 +391,27 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
           .attr("width", buttonWidth + 2)
           .attr("height", buttonHeight + 2)
           .append("xhtml:button")
-          .attr("class", d.nodeType === "center" ? "center-keyword-button" : "main-node-button")
+          .attr(
+            "class",
+            d.nodeType === "center"
+              ? "center-keyword-button"
+              : "main-node-button"
+          )
           .style("width", buttonWidth + "px")
           .style("height", buttonHeight + "px")
           .style("color", "#fff")
           .style("background", d.nodeColor || "#1976d2")
-          .style("padding", d.nodeType === "center" ? "0.25em 1.25em 0.25em 1em" : "0.18em 1em 0.18em 0.9em")
+          .style(
+            "padding",
+            d.nodeType === "center"
+              ? "0.25em 1.25em 0.25em 1em"
+              : "0.18em 1em 0.18em 0.9em"
+          )
           .style("gap", "0.38em")
           .html(
-            `<i class="${d.icon || 'fa fa-circle'}" style="color:${d.iconColor || '#fff'};margin-right:0.38em"></i> <span>${label}</span>`
+            `<i class="${d.icon || "fa fa-circle"}" style="color:${
+              d.iconColor || "#fff"
+            };margin-right:0.38em"></i> <span>${label}</span>`
           );
       } else {
         g.append("circle")
@@ -336,7 +427,9 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
           .append("xhtml:div")
           .attr("class", "icon-container")
           .html(
-            `<i class="${d.icon || 'fa fa-circle'}" style="color:${d.iconColor || '#fff'};font-size:${d.nodeIconSize}px;"></i>`
+            `<i class="${d.icon || "fa fa-circle"}" style="color:${
+              d.iconColor || "#fff"
+            };font-size:${d.nodeIconSize}px;"></i>`
           );
 
         g.append("foreignObject")
@@ -348,8 +441,12 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
           .append("xhtml:div")
           .attr("class", "checkbox-container " + d.category + "_" + d.nodeType)
           .html(
-            `<input type="checkbox" class="kcb" data-id="${d.id}" onchange="handleCheckboxChange('${d.id}', '${d.keyword}', this.checked)">
-             <span class="${d.textClass || 'medium-text'}">${d.keyword}</span>`
+            `<input type="checkbox" class="kcb" data-id="${
+              d.id
+            }" onchange="handleCheckboxChange('${d.id}', '${
+              d.keyword
+            }', this.checked)">
+             <span class="${d.textClass || "medium-text"}">${d.keyword}</span>`
           );
       }
     });
@@ -359,14 +456,16 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
       keyword: string,
       checked: boolean
     ) {
-      const nodeObj = graphDataRef.current.nodes.find((n: any) => n.id === nodeId);
+      const nodeObj = graphDataRef.current.nodes.find(
+        (n: any) => n.id === nodeId
+      );
       if (nodeObj && nodeObj.nodeType === "sub") {
         if (checked) {
           if (!selectedSubNodeOrder.includes(nodeId)) {
-            setSelectedSubNodeOrder(prev => [...prev, nodeId]);
+            setSelectedSubNodeOrder((prev) => [...prev, nodeId]);
           }
         } else {
-          setSelectedSubNodeOrder(prev => prev.filter(id => id !== nodeId));
+          setSelectedSubNodeOrder((prev) => prev.filter((id) => id !== nodeId));
         }
         drawSelectedPath();
       }
@@ -375,18 +474,23 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
 
     function drawSelectedPath() {
       if (!gRef.current) return;
-      
+
       gRef.current.selectAll(".selected-path-line").remove();
       if (selectedSubNodeOrder.length > 1) {
         const coords = selectedSubNodeOrder
-          .map(id => {
-            const n = graphDataRef.current.nodes.find((node: any) => node.id === id);
-            return n && n.x !== undefined && n.y !== undefined ? [n.x, n.y] : null;
+          .map((id) => {
+            const n = graphDataRef.current.nodes.find(
+              (node: any) => node.id === id
+            );
+            return n && n.x !== undefined && n.y !== undefined
+              ? [n.x, n.y]
+              : null;
           })
-          .filter(d => d);
-        
+          .filter((d) => d);
+
         for (let i = 0; i < coords.length - 1; ++i) {
-          gRef.current.append("line")
+          gRef.current
+            .append("line")
             .attr("class", "selected-path-line")
             .attr("x1", coords[i]![0])
             .attr("y1", coords[i]![1])
@@ -471,7 +575,7 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
         .attr("y", (d: any) => (d.source.y + d.target.y) / 2);
 
       node.attr("transform", (d: any) => `translate(${d.x},${d.y})`);
-      
+
       drawSelectedPath();
     });
 
@@ -533,6 +637,32 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
 
   const handleDownload = () => {
     alert("Download functionality coming soon!");
+  };
+
+  // Year control handlers
+  const handleDecreaseMin = () => {
+    if (startYear > 1900 && startYear < endYear) {
+      setStartYear(startYear - 1);
+    }
+  };
+
+  const handleIncreaseMin = () => {
+    if (startYear < endYear - 1) {
+      setStartYear(startYear + 1);
+    }
+  };
+
+  const handleDecreaseMax = () => {
+    if (endYear > startYear + 1) {
+      setEndYear(endYear - 1);
+    }
+  };
+
+  const handleIncreaseMax = () => {
+    const currentYear = new Date().getFullYear();
+    if (endYear < currentYear) {
+      setEndYear(endYear + 1);
+    }
   };
 
   return (
@@ -599,7 +729,9 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
           max={nodeMaxLimit}
           step={10}
           value={nodeDisplayLimit}
-          onChange={(e) => handleNodeCountChange(parseInt(e.target.value) || nodeDisplayLimit)}
+          onChange={(e) =>
+            handleNodeCountChange(parseInt(e.target.value) || nodeDisplayLimit)
+          }
         />
         <button
           id="btnIncNode"
@@ -608,6 +740,38 @@ const GraphSection = ({ selectedKeyword, graphData: graphDataProp, nodeDisplayLi
         >
           <i className="fa fa-plus"></i>
         </button>
+      </div>
+
+      {/* Year Range Control Panel */}
+      <div className="year-select-section">
+        <div className="year-gradient-bar"></div>
+        <div className="d-flex justify-content-between w-100">
+          {/* Min Year */}
+          <div className="years-count">
+            <i
+              className="fa-solid fa-minus fa-xs year-icon"
+              onClick={handleDecreaseMin}
+            ></i>
+            <span className="fw-medium">{startYear}</span>
+            <i
+              className="fa-solid fa-plus fa-xs year-icon"
+              onClick={handleIncreaseMin}
+            ></i>
+          </div>
+
+          {/* Max Year */}
+          <div className="years-count">
+            <i
+              className="fa-solid fa-minus fa-xs year-icon"
+              onClick={handleDecreaseMax}
+            ></i>
+            <span className="fw-medium">{endYear}</span>
+            <i
+              className="fa-solid fa-plus fa-xs year-icon"
+              onClick={handleIncreaseMax}
+            ></i>
+          </div>
+        </div>
       </div>
 
       {/* Control Buttons */}
